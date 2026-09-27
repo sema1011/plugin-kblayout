@@ -41,7 +41,10 @@
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusReply>
+
+#ifdef KBLAYOUT_X11
 #include <xcb/xcb.h>
+#endif
 
 #include <LXQt/lxqtsettings.h>
 
@@ -64,18 +67,20 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
         connect(m_backend, &KbLayoutBackend::layoutChanged,
                 this, &KbLayout::updateWidgetFromBackend);
 
+#ifdef KBLAYOUT_X11
         // Connect LED state signal (X11 only)
         auto *x11Backend = qobject_cast<X11Backend*>(m_backend);
         if (x11Backend) {
             connect(x11Backend, &X11Backend::ledStateChanged,
                     this, &KbLayout::updateLedState);
 
-        // Create KbdKeeper for X11
-        m_keeper = new WinKbdKeeper(
-            static_cast<xcb_connection_t*>(x11Backend->connection()),
-            x11Backend->deviceId());
-        m_keeper->setup();
+            // Create KbdKeeper for X11
+            m_keeper = new WinKbdKeeper(
+                static_cast<xcb_connection_t*>(x11Backend->connection()),
+                x11Backend->deviceId());
+            m_keeper->setup();
         }
+#endif
     }
 
     // Connect widget signals to plugin slots
@@ -91,8 +96,10 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
 
 KbLayout::~KbLayout()
 {
+#ifdef KBLAYOUT_X11
     if (m_keeper)
         delete m_keeper;
+#endif
 }
 
 void KbLayout::createBackend()
