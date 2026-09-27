@@ -60,6 +60,7 @@ signals:
      */
     void ledStateChanged(bool caps, bool num, bool scroll);
 
+public:
     /**
      * \brief Accessors for internal X11 state.
      */
@@ -70,6 +71,7 @@ private:
     friend class pimpl::NativeEventFilter;
     bool init();
     void readState();
+    void readLedState();
     void readKbdInfo();
 
     bool m_valid{false};

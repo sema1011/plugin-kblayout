@@ -70,12 +70,11 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
             connect(x11Backend, &X11Backend::ledStateChanged,
                     this, &KbLayout::updateLedState);
 
-            // Create KbdKeeper for X11
-            m_keeper = new WinKbdKeeper(
-                static_cast<xcb_connection_t*>(x11Backend->connection()),
-                x11Backend->deviceId(),
-                KeeperType::Global);
-            m_keeper->setup();
+        // Create KbdKeeper for X11
+        m_keeper = new WinKbdKeeper(
+            static_cast<xcb_connection_t*>(x11Backend->connection()),
+            x11Backend->deviceId());
+        m_keeper->setup();
         }
     }
 

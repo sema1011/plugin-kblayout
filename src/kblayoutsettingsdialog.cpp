@@ -26,7 +26,7 @@
 #include "kblayoutsettings.h"
 
 #include "ui_kblayoutsettingsdialog.h"
-#include <QAbstractButton>
+#include <QPushButton>
 
 KbLayoutSettingsDialog::KbLayoutSettingsDialog(KbLayoutSettings *settings, QWidget *parent) :
     QDialog(parent),
@@ -41,7 +41,8 @@ KbLayoutSettingsDialog::KbLayoutSettingsDialog(KbLayoutSettings *settings, QWidg
 
     // Connect Apply button
     connect(ui->buttonBox, &QDialogButtonBox::clicked, this, [this](QAbstractButton *btn) {
-        if (ui->buttonBox->button(QDialogButtonBox::Apply) == btn) {
+        QPushButton *applyBtn = ui->buttonBox->button(QDialogButtonBox::Apply);
+        if (applyBtn && btn == applyBtn) {
             onApply();
         }
     });

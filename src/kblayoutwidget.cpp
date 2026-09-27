@@ -31,6 +31,7 @@
 #include <QFont>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <QLabel>
 #include <QAction>
 #include <QScreen>
 #include <QGuiApplication>
@@ -154,27 +155,6 @@ void KbLayoutWidget::setShowScroll(bool show)
     m_showScroll = show;
     if (!show && m_scrollLabel)
         m_scrollLabel->setVisible(false);
-}
-
-    // Update Num LED
-    if (m_showNum) {
-        m_numLabel->setVisible(true);
-        m_numLabel->setStyleSheet(num
-            ? "color: green; font-size: 9px;"
-            : "color: gray; font-size: 9px;");
-    }
-
-    // Update Scroll LED
-    if (m_showScroll) {
-        m_scrollLabel->setVisible(true);
-        m_scrollLabel->setStyleSheet(scroll
-            ? "color: green; font-size: 9px;"
-            : "color: gray; font-size: 9px;");
-    }
-
-    if (changed) {
-        // Emit signal if needed
-    }
 }
 
 void KbLayoutWidget::onLayoutChanged(int layoutIndex)

@@ -24,9 +24,12 @@
 
 #include "kbdkeeper.h"
 
+// Avoid conflict with C++ keyword 'explicit' in xcb/xkb.h
+#define explicit _explicit
 #include <xcb/xkb.h>
 #include <xcb/xproto.h>
 #include <xcb/xfixes.h>
+#undef explicit
 
 KbLayoutKeeper::KbLayoutKeeper(xcb_connection_t *conn, int deviceId, KeeperType type) :
     m_conn(conn),
@@ -75,10 +78,7 @@ void KbLayoutKeeper::switchToGroup(uint group)
 
 void KbLayoutKeeper::keyboardChanged()
 {
-    // Reset mapping on keyboard change
-    m_mapping.clear();
-    m_activeWindow = 0;
-    m_activeClass.clear();
+    // Reset mapping on keyboard change (override in subclasses)
 }
 
 void KbLayoutKeeper::layoutChanged(uint group)

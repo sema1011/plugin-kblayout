@@ -72,9 +72,9 @@ public:
 
                 // Also emit LED state changes
                 if (sevent->changed & (XCB_XKB_STATE_PART_MODIFIER_BASE
-                                      | XCB_XKB_STATE_PART_MODIFIER_LATCHED
-                                      | XCB_XKB_STATE_PART_MODIFIER_LOCKED
-                                      | XCB_XKB_STATE_PART_LED_GROUP)) {
+                                      | XCB_XKB_STATE_PART_MODIFIER_LATCH
+                                      | XCB_XKB_STATE_PART_MODIFIER_LOCK
+                                      | XCB_XKB_STATE_PART_GRAB_MODS)) {
                     m_backend->readLedState();
                 }
 
@@ -296,12 +296,12 @@ void X11Backend::readLedState()
     if (!m_state)
         return;
 
-    bool caps = xkb_state_led_index_is_active(static_cast<xkb_state*>(m_state),
-                                               XKB_LED_INDEX_CAPS);
-    bool num = xkb_state_led_index_is_active(static_cast<xkb_state*>(m_state),
-                                              XKB_LED_INDEX_NUM);
-    bool scroll = xkb_state_led_index_is_active(static_cast<xkb_state*>(m_state),
-                                                 XKB_LED_INDEX_SCROLL);
+    bool caps = xkb_state_led_name_is_active(static_cast<xkb_state*>(m_state),
+                                              XKB_LED_NAME_CAPS);
+    bool num = xkb_state_led_name_is_active(static_cast<xkb_state*>(m_state),
+                                             XKB_LED_NAME_NUM);
+    bool scroll = xkb_state_led_name_is_active(static_cast<xkb_state*>(m_state),
+                                                XKB_LED_NAME_SCROLL);
 
     emit ledStateChanged(caps, num, scroll);
 }

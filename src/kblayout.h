@@ -45,7 +45,7 @@ class KbLayout : public QObject, public ILXQtPanelPlugin
     Q_OBJECT
 public:
     KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo);
-    ~KbLayout() override = default;
+    ~KbLayout() override;
 
     virtual QString themeId() const override
     { return QStringLiteral("KbLayout"); }
