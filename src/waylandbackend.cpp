@@ -146,9 +146,6 @@ bool WaylandBackend::initKWin()
         connect(m_ledPollTimer, &QTimer::timeout,
                 this, &WaylandBackend::_on_led_poll_timer);
         m_ledPollTimer->start();
-
-        // Start async refresh for full layout names (qdbus6 --literal)
-        readKWinLayouts();
     }
 
     // Fallback: try org.freedesktop.Implementations.Keyboards
@@ -205,6 +202,7 @@ bool WaylandBackend::initKWin()
     } else {
         qWarning() << "kblayout: KWin backend initialized but no layouts found";
     }
+    m_kwinInitDone = m_valid;
     return m_valid;
 }
 
@@ -938,7 +936,11 @@ void WaylandBackend::_on_kwin_layoutChanged(uint index)
 {
     // Cache the index from D-Bus signal (avoids blocking D-Bus call)
     m_currentLayoutIndex = static_cast<int>(index);
-    readKWinLayouts();
+
+    // Only refresh layouts asynchronously after init is fully complete
+    if (m_kwinInitDone) {
+        readKWinLayouts();
+    }
     emit layoutChanged(m_currentLayoutIndex);
 }
 

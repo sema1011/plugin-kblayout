@@ -239,6 +239,13 @@ private:
      * \brief Target layout index for async setLayout.
      */
     int m_asyncSetLayoutTarget{-1};
+
+    /**
+     * \brief Set to true after initKWin() completes successfully.
+     * Prevents _on_kwin_layoutChanged from starting async processes
+     * during the init phase when the backend might not be ready.
+     */
+    bool m_kwinInitDone{false};
 };
 
 #endif // WAYLANDBACKEND_H
