@@ -190,14 +190,17 @@ void WaylandBackend::readKWinLayouts()
 
     QDBusReply<QVariant> reply =
         m_kwinLayouts->call(QStringLiteral("getLayoutsList"));
+    qDebug() << "kblayout: D-Bus isValid=" << reply.isValid()
+             << "error=" << reply.error().message();
     if (reply.isValid()) {
         m_layoutSyms.clear();
         m_layoutNames.clear();
-        // D-Bus returns QList<QList<QVariant>>, which becomes
-        // QVariant -> QVariantList -> QList<QVariant>
+        qDebug() << "kblayout: D-Bus raw value type=" << reply.value().typeName();
         QVariantList outer = reply.value().toList();
-        for (const auto &outerItem : outer) {
-            QVariantList inner = outerItem.toList();
+        qDebug() << "kblayout: D-Bus outer list size=" << outer.size();
+        for (int i = 0; i < outer.size(); ++i) {
+            QVariantList inner = outer[i].toList();
+            qDebug() << "kblayout: D-Bus item" << i << "inner size=" << inner.size();
             // D-Bus returns: [symbol, variant, display_name]
             if (inner.size() >= 3) {
                 m_layoutSyms.append(inner[0].toString());    // sym (us, ru)
