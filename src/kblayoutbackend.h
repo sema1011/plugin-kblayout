@@ -54,6 +54,11 @@ public:
     virtual QStringList layouts() const = 0;
 
     /**
+     * \brief Returns list of human-readable layout names (e.g. "English (US)", "Russian").
+     */
+    virtual QStringList layoutNames() const = 0;
+
+    /**
      * \brief Returns index of the current layout.
      */
     virtual int currentLayout() const = 0;

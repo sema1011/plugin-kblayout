@@ -50,6 +50,7 @@ public:
 
     bool isValid() const override { return m_valid; }
     QStringList layouts() const override;
+    QStringList layoutNames() const override;
     int currentLayout() const override;
     void setLayout(int index) override;
     void nextLayout() override;

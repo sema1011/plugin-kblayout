@@ -699,6 +699,11 @@ QStringList WaylandBackend::layouts() const
     return m_layoutSyms;
 }
 
+QStringList WaylandBackend::layoutNames() const
+{
+    return m_layoutNames;
+}
+
 int WaylandBackend::currentLayout() const
 {
     if (m_compositor == QLatin1String("kwin")) {

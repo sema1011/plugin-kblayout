@@ -254,6 +254,11 @@ QStringList X11Backend::layouts() const
     return m_layoutSyms;
 }
 
+QStringList X11Backend::layoutNames() const
+{
+    return m_layoutNames;
+}
+
 int X11Backend::currentLayout() const
 {
     if (!m_state || !m_keymap)

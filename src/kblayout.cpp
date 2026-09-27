@@ -167,14 +167,7 @@ void KbLayout::updateWidgetFromBackend()
 
     int newIdx = m_backend->currentLayout();
     const auto &syms = m_backend->layouts();
-
-    // Build names list: use layout names if available, otherwise upper-case syms
-    QStringList names;
-    if (m_backend->layouts().size() == syms.size()) {
-        // Backend already provides separate names
-        // For now, use syms as names (backends can be extended)
-        names = syms;
-    }
+    const auto &names = m_backend->layoutNames();
 
     m_widget.setLayouts(syms, names);
     m_widget.setCurrentLayout(newIdx);
