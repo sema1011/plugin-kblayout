@@ -229,8 +229,6 @@ void WaylandBackend::readKWinLayouts()
     if (process.exitCode() == 0) {
         QByteArray output = process.readAllStandardOutput();
         QString outputStr = QString::fromUtf8(output).trimmed();
-        qDebug() << "kblayout: qdbus6 output:" << outputStr;
-
         // Parse qdbus6 --literal output:
         // [Argument: a(sss) {[Argument: (sss) "us", "", "Английская (США)"], [Argument: (sss) "ru", "", "Русская"]}]
         // Extract all "sym", "", "Display Name" triplets
