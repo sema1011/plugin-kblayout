@@ -65,20 +65,20 @@ KbLayoutWidget::KbLayoutWidget(QWidget *parent) :
 
     // LED indicators (initially hidden)
     m_capsLabel = new QLabel(QStringLiteral("Caps"), this);
-    m_capsLabel->setFixedSize(24, 16);
-    m_capsLabel->setStyleSheet(QStringLiteral("color: gray; font-size: 11px; font-weight: bold;"));
+    m_capsLabel->setFixedSize(32, 18);
+    m_capsLabel->setStyleSheet(QStringLiteral("color: gray; font-size: 12px; font-weight: bold;"));
     m_capsLabel->setVisible(false);
     mainLayout->addWidget(m_capsLabel);
 
     m_numLabel = new QLabel(QStringLiteral("Num"), this);
-    m_numLabel->setFixedSize(24, 16);
-    m_numLabel->setStyleSheet(QStringLiteral("color: gray; font-size: 11px; font-weight: bold;"));
+    m_numLabel->setFixedSize(32, 18);
+    m_numLabel->setStyleSheet(QStringLiteral("color: gray; font-size: 12px; font-weight: bold;"));
     m_numLabel->setVisible(false);
     mainLayout->addWidget(m_numLabel);
 
     m_scrollLabel = new QLabel(QStringLiteral("Scr"), this);
-    m_scrollLabel->setFixedSize(24, 16);
-    m_scrollLabel->setStyleSheet(QStringLiteral("color: gray; font-size: 11px; font-weight: bold;"));
+    m_scrollLabel->setFixedSize(32, 18);
+    m_scrollLabel->setStyleSheet(QStringLiteral("color: gray; font-size: 12px; font-weight: bold;"));
     m_scrollLabel->setVisible(false);
     mainLayout->addWidget(m_scrollLabel);
 
@@ -123,24 +123,24 @@ void KbLayoutWidget::setLedState(bool caps, bool num, bool scroll)
     if (m_showCaps) {
         m_capsLabel->setVisible(true);
         m_capsLabel->setStyleSheet(caps
-            ? QStringLiteral("color: green; font-size: 11px; font-weight: bold;")
-            : QStringLiteral("color: gray; font-size: 11px; font-weight: bold;"));
+            ? QStringLiteral("color: green; font-size: 12px; font-weight: bold;")
+            : QStringLiteral("color: gray; font-size: 12px; font-weight: bold;"));
     }
 
     // Update Num LED
     if (m_showNum) {
         m_numLabel->setVisible(true);
         m_numLabel->setStyleSheet(num
-            ? QStringLiteral("color: green; font-size: 11px; font-weight: bold;")
-            : QStringLiteral("color: gray; font-size: 11px; font-weight: bold;"));
+            ? QStringLiteral("color: green; font-size: 12px; font-weight: bold;")
+            : QStringLiteral("color: gray; font-size: 12px; font-weight: bold;"));
     }
 
     // Update Scroll LED
     if (m_showScroll) {
         m_scrollLabel->setVisible(true);
         m_scrollLabel->setStyleSheet(scroll
-            ? QStringLiteral("color: green; font-size: 11px; font-weight: bold;")
-            : QStringLiteral("color: gray; font-size: 11px; font-weight: bold;"));
+            ? QStringLiteral("color: green; font-size: 12px; font-weight: bold;")
+            : QStringLiteral("color: gray; font-size: 12px; font-weight: bold;"));
     }
 }
 
