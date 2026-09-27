@@ -129,6 +129,12 @@ void KbLayoutKeeper::switchToGroup(uint group)
     emit changed();
 }
 
+void KbLayoutKeeper::layoutChanged(uint group)
+{
+    // Override in subclasses
+    Q_UNUSED(group)
+}
+
 void KbLayoutKeeper::checkState()
 {
     // Override in subclasses
