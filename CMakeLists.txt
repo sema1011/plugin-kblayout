@@ -56,6 +56,9 @@ set(UI_FILES
     src/kblayoutsettingsdialog.ui
 )
 
+# Generate headers from UI files
+qt_wrap_ui(UI_HEADERS ${UI_FILES})
+
 set(LIBRARIES
     Qt6::Widgets
     Qt6::Xml
