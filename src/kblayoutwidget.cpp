@@ -52,7 +52,6 @@ KbLayoutWidget::KbLayoutWidget(QWidget *parent) :
     m_button->setToolButtonStyle(Qt::ToolButtonTextOnly);
     m_button->setFont(QFont(QStringLiteral("Sans"), m_fontSize, QFont::Bold));
     m_button->setContextMenuPolicy(Qt::NoContextMenu);
-    m_button->setIconSize(QSize(24, 24));  // Explicit icon size for flag display
     mainLayout->addWidget(m_button);
 
     // Install event filter for both left and right click handling
@@ -210,16 +209,17 @@ void KbLayoutWidget::updateDisplay()
             }
             if (QFile::exists(flagFile)) {
                 layoutIcon = QIcon(flagFile);
-                // Verify icon produces a pixmap (use fixed size since iconSize() is 0,0 by default)
-                if (layoutIcon.pixmap(24, 24).isNull()) {
+                // Verify icon produces a pixmap (use font size for matching)
+                if (layoutIcon.pixmap(m_fontSize, m_fontSize).isNull()) {
                     layoutIcon = QIcon();
                 }
             }
         }
 
-        if (m_showFlags && !m_flagPattern.isEmpty() && !layoutIcon.pixmap(24, 24).isNull()) {
-            // Flag icon mode: show icon
+        if (m_showFlags && !m_flagPattern.isEmpty() && !layoutIcon.pixmap(m_fontSize, m_fontSize).isNull()) {
+            // Flag icon mode: show icon matching font size
             m_button->setIcon(layoutIcon);
+            m_button->setIconSize(QSize(m_fontSize, m_fontSize));
             m_button->setToolButtonStyle(Qt::ToolButtonIconOnly);
         } else {
             // Text mode: show layout symbol (default when flags disabled)
