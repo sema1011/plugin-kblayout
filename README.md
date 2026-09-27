@@ -7,9 +7,12 @@
 
 - Отображение текущей раскладки на панели
 - Переключение по левому клику (циклическое)
-- Контекстное меню с выбором раскладки (правый клик)
+- Иконки-флаги для раскладок (настраиваемый путь к каталогу)
+- Переключатель отображения флагов (вкл/выкл)
+- Индикаторы CapsLock, NumLock, ScrollLock
 - Уведомления при смене раскладки
-- Настройки через диалог (размер шрифта, уведомления)
+- Настройки через диалог (размер шрифта, флаги, LED, уведомления)
+- Кнопка "Configure layouts..." (открывает lxqt-config-input)
 - Поддержка X11 и Wayland
 
 ## Поддерживаемые композиторы
@@ -17,7 +20,7 @@
 | Композитор      | Чтение раскладки                  | Переключение                      | Статус       |
 |-----------------|-----------------------------------|-----------------------------------|--------------|
 | X11 (Openbox)   | libxkbcommon-x11 + XCB            | xcb_xkb_latch_lock_state          | Полная       |
-| KWin Wayland    | D-Bus `org.kde.KeyboardLayouts`   | D-Bus `setLayout()` / `switchToNextLayout` | Полная |
+| KWin Wayland    | D-Bus `org.kde.KeyboardLayouts`   | `qdbus6` (async)                  | Полная       |
 | Sway            | `swaymsg -t get_inputs` + config  | `wtype Alt+Shift` (циклическое)   | Частичная    |
 | Hyprland        | `hyprctl -j devices`              | `hyprctl keyword xkb_layout N`    | Полная       |
 | Labwc           | — (fallback `us,ru`)              | `wtype` (эмуляция клавиши)        | Эмуляция     |
@@ -35,6 +38,7 @@
 - `libxkbcommon-x11` + `libxcb` + `libxcb-xkb` — X11 бэкенд
 - `wayland-client` — Wayland бэкенд
 - `wtype` — эмуляция клавиш на Wayland (Labwc, Wayfire, generic)
+- `qdbus6` — D-Bus CLI для KWin Wayland
 
 ## Сборка
 
@@ -65,12 +69,26 @@ sudo cp lxqt-panel/libkblayout.so /usr/lib/lxqt-panel/
 2. Добавить → «Keyboard Layout Switcher»
 3. Настроить через правый клик на индикаторе
 
+## Настройки
+
+### Отображение
+- **Показывать текст** — отображение кода раскладки (EN, RU)
+- **Иконки-флаги** — переключатель отображения флагов
+- **Паттерн иконок** — путь к каталогу с флагами или паттерн с `%1`
+  - Каталог: `/usr/share/sddm/flags` → автоматически `/usr/share/sddm/flags/us.png`
+  - Паттерн: `/usr/share/sddm/flags/%1.png` → `/usr/share/sddm/flags/us.png`
+- **Размер шрифта** — размер текста на индикаторе
+- **Caps Lock / Num Lock / Scroll Lock** — индикаторы LED-статусов
+
+### Поведение
+- **Показывать уведомления** — уведомления при смене раскладки
+- **Configure layouts...** — открывает `lxqt-config-input --show-page Keyboard Layout`
+
 ## Горячие клавиши
 
 ### В плагине
 - **Левый клик** — переключить на следующую раскладку
 - **Правый клик** — контекстное меню с выбором раскладки
-- **Ctrl+Space** — «Next Layout» (из контекстного меню)
 
 ### Системные хоткеи
 > **Важно:** `lxqt-globalkeys` не работает на Wayland. Настройте хоткеи через композитор:
@@ -86,6 +104,7 @@ sudo cp lxqt-panel/libkblayout.so /usr/lib/lxqt-panel/
 - Layer-shell surface получает keymap только в фокусе
 - На Sway переключение циклическое (через эмуляцию клавиш)
 - На Labwc/Wayfire нет чтения текущей раскладки
+- LED-индикаторы (Caps/Num/Scroll) читаются из `/sys/class/leds/*/brightness`
 
 ### X11
 - Переключение работает только для активного XKB-устройства
