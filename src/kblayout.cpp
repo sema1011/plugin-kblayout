@@ -206,6 +206,9 @@ void KbLayout::settingsChanged()
 
     m_widget.setup();
     updateWidgetFromBackend();
+
+    // Re-emit initial LED state after settings are applied
+    m_backend->emitInitialLedState();
 }
 
 void KbLayout::updateLedState(bool caps, bool num, bool scroll)
