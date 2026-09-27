@@ -81,9 +81,6 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
             m_keeper->setup();
         }
 #endif
-
-        // Emit initial LED state to show indicators immediately
-        m_backend->emitInitialLedState();
     }
 
     // Connect widget signals to plugin slots
@@ -95,6 +92,11 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
             this, &KbLayout::onConfigureRequested);
 
     settingsChanged();
+
+    // Emit initial LED state AFTER settings are applied
+    if (m_backend) {
+        m_backend->emitInitialLedState();
+    }
 }
 
 KbLayout::~KbLayout()
@@ -139,7 +141,7 @@ void KbLayout::createBackend()
 
     if (!m_backend) {
         qWarning() << "kblayout: No backend available for platform"
-                   << platform << "session type" << sessionType;
+                    << platform << "session type" << sessionType;
     }
 }
 
@@ -207,8 +209,10 @@ void KbLayout::settingsChanged()
     m_widget.setup();
     updateWidgetFromBackend();
 
-    // Re-emit initial LED state after settings are applied
-    m_backend->emitInitialLedState();
+    // Emit initial LED state after settings are applied
+    if (m_backend) {
+        m_backend->emitInitialLedState();
+    }
 }
 
 void KbLayout::updateLedState(bool caps, bool num, bool scroll)
@@ -260,9 +264,9 @@ void KbLayout::showLayoutNotification(const QString &layoutName)
 
     // Try KDE Plasma notification (KNotify)
     QDBusInterface notify(QStringLiteral("org.kde.KNotify"),
-                          QStringLiteral("/Notify"),
-                          QStringLiteral("org.kde.KNotify"),
-                          QDBusConnection::sessionBus());
+                           QStringLiteral("/Notify"),
+                           QStringLiteral("org.kde.KNotify"),
+                           QDBusConnection::sessionBus());
 
     if (notify.isValid()) {
         QDBusReply<uint> reply = notify.call(QStringLiteral("event"),
@@ -281,9 +285,9 @@ void KbLayout::showLayoutNotification(const QString &layoutName)
 
     // Fallback: FreeDesktop notification (Notify OSD / dunst)
     QDBusInterface notify2(QStringLiteral("org.freedesktop.Notifications"),
-                           QStringLiteral("/org/freedesktop/Notifications"),
-                           QStringLiteral("org.freedesktop.Notifications"),
-                           QDBusConnection::sessionBus());
+                            QStringLiteral("/org/freedesktop/Notifications"),
+                            QStringLiteral("org.freedesktop.Notifications"),
+                            QDBusConnection::sessionBus());
 
     if (notify2.isValid()) {
         // Arguments: app_name, replaces_id, app_icon, summary, body, actions, hints, timeout
