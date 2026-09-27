@@ -181,48 +181,57 @@ void X11Backend::readState()
     readKbdInfo();
 }
 
+void X11Backend::parseEvdevXml()
+{
+    if (!m_langCache.isEmpty())
+        return; // Already cached
+
+    QString xmlPath = QStringLiteral("/usr/share/X11/xkb/rules/evdev.xml");
+    QFile file(xmlPath);
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+
+    QDomDocument doc;
+    if (!doc.setContent(&file)) {
+        file.close();
+        return;
+    }
+
+    QDomElement root = doc.documentElement();
+    QDomElement layoutList = root.firstChildElement(QStringLiteral("layoutList"));
+
+    for (int i = 0; i < layoutList.childNodes().count(); ++i) {
+        QDomElement config = layoutList.childNodes().at(i)
+            .firstChildElement(QStringLiteral("configItem"));
+        QString desc = config.firstChildElement(QStringLiteral("description"))
+            .firstChild().toText().data();
+        QString name = config.firstChildElement(QStringLiteral("name"))
+            .firstChild().toText().data();
+        m_langCache.insert(name, desc);
+
+        // Also cache variants: variantName -> layout description
+        QDomElement variantList = layoutList.childNodes().at(i)
+            .firstChildElement(QStringLiteral("variantList"));
+        for (int j = 0; j < variantList.childNodes().count(); ++j) {
+            QDomElement varConfig = variantList.childNodes().at(j)
+                .firstChildElement(QStringLiteral("configItem"));
+            QString varName = varConfig.firstChildElement(QStringLiteral("name"))
+                .firstChild().toText().data();
+            m_langCache.insert(varName, desc);
+        }
+    }
+    file.close();
+}
+
 void X11Backend::readKbdInfo()
 {
     m_layoutSyms.clear();
     m_layoutNames.clear();
 
+    // Parse evdev.xml once and cache layout/variant names
+    parseEvdevXml();
+
     xkb_layout_index_t count = xkb_keymap_num_layouts(static_cast<xkb_keymap*>(m_keymap));
-
-    // Read layout names from evdev.xml once
-    static bool cached = false;
-    static QHash<QString, QString> langCache;
-    if (!cached) {
-        cached = true;
-        QString xmlPath = QStringLiteral("/usr/share/X11/xkb/rules/evdev.xml");
-        QFile file(xmlPath);
-        if (file.open(QIODevice::ReadOnly)) {
-            QDomDocument doc;
-            if (doc.setContent(&file)) {
-                QDomElement root = doc.documentElement();
-                QDomElement layoutList = root.firstChildElement(QStringLiteral("layoutList"));
-                for (int i = 0; i < layoutList.childNodes().count(); ++i) {
-                    QDomElement config = layoutList.childNodes().at(i)
-                        .firstChildElement(QStringLiteral("configItem"));
-                    QString desc = config.firstChildElement(QStringLiteral("description"))
-                        .firstChild().toText().data();
-                    QString name = config.firstChildElement(QStringLiteral("name"))
-                        .firstChild().toText().data();
-                    langCache.insert(name, desc);
-
-                    QDomElement variantList = layoutList.childNodes().at(i)
-                        .firstChildElement(QStringLiteral("variantList"));
-                    for (int j = 0; j < variantList.childNodes().count(); ++j) {
-                        QDomElement varConfig = variantList.childNodes().at(j)
-                            .firstChildElement(QStringLiteral("configItem"));
-                        QString varName = varConfig.firstChildElement(QStringLiteral("name"))
-                            .firstChild().toText().data();
-                        langCache.insert(varName, desc);
-                    }
-                }
-            }
-            file.close();
-        }
-    }
 
     for (xkb_layout_index_t i = 0; i < count; ++i) {
         const char *name = xkb_keymap_layout_get_name(static_cast<xkb_keymap*>(m_keymap), i);
@@ -230,8 +239,8 @@ void X11Backend::readKbdInfo()
             QString sym = QString::fromUtf8(name);
             m_layoutSyms.append(sym);
 
-            auto it = langCache.find(sym);
-            if (it != langCache.end()) {
+            auto it = m_langCache.find(sym);
+            if (it != m_langCache.end()) {
                 m_layoutNames.append(it.value());
             } else {
                 m_layoutNames.append(sym.toUpper());

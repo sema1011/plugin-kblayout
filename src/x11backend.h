@@ -85,6 +85,11 @@ private:
     QStringList m_layoutNames;
     QHash<QString, QString> m_langCache;
     QAbstractNativeEventFilter *m_eventFilter{nullptr};
+
+    /**
+     * \brief Parse /usr/share/X11/xkb/rules/evdev.xml and cache layout/variant names.
+     */
+    void parseEvdevXml();
 };
 
 #endif // X11BACKEND_H
