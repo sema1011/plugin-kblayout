@@ -40,10 +40,22 @@ bool KbLayoutSettings::showText() const
     return m_settings->value(QStringLiteral("showText"), true).toBool();
 }
 
-bool KbLayoutSettings::showFlag() const
+bool KbLayoutSettings::showCaps() const
 {
     if (!m_settings) return false;
-    return m_settings->value(QStringLiteral("showFlag"), false).toBool();
+    return m_settings->value(QStringLiteral("showCaps"), false).toBool();
+}
+
+bool KbLayoutSettings::showNum() const
+{
+    if (!m_settings) return false;
+    return m_settings->value(QStringLiteral("showNum"), false).toBool();
+}
+
+bool KbLayoutSettings::showScroll() const
+{
+    if (!m_settings) return false;
+    return m_settings->value(QStringLiteral("showScroll"), false).toBool();
 }
 
 int KbLayoutSettings::fontSize() const
@@ -58,22 +70,28 @@ bool KbLayoutSettings::showNotification() const
     return m_settings->value(QStringLiteral("showNotification"), true).toBool();
 }
 
-bool KbLayoutSettings::cycleAllLayouts() const
-{
-    if (!m_settings) return true;
-    return m_settings->value(QStringLiteral("cycleAllLayouts"), true).toBool();
-}
-
 void KbLayoutSettings::setShowText(bool show)
 {
     if (m_settings)
         m_settings->setValue(QStringLiteral("showText"), show);
 }
 
-void KbLayoutSettings::setShowFlag(bool show)
+void KbLayoutSettings::setShowCaps(bool show)
 {
     if (m_settings)
-        m_settings->setValue(QStringLiteral("showFlag"), show);
+        m_settings->setValue(QStringLiteral("showCaps"), show);
+}
+
+void KbLayoutSettings::setShowNum(bool show)
+{
+    if (m_settings)
+        m_settings->setValue(QStringLiteral("showNum"), show);
+}
+
+void KbLayoutSettings::setShowScroll(bool show)
+{
+    if (m_settings)
+        m_settings->setValue(QStringLiteral("showScroll"), show);
 }
 
 void KbLayoutSettings::setFontSize(int size)
@@ -86,10 +104,4 @@ void KbLayoutSettings::setShowNotification(bool show)
 {
     if (m_settings)
         m_settings->setValue(QStringLiteral("showNotification"), show);
-}
-
-void KbLayoutSettings::setCycleAllLayouts(bool cycle)
-{
-    if (m_settings)
-        m_settings->setValue(QStringLiteral("cycleAllLayouts"), cycle);
 }

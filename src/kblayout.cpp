@@ -41,6 +41,7 @@
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusReply>
+#include <xcb/xcb.h>
 
 #include <LXQt/lxqtsettings.h>
 
@@ -62,6 +63,20 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
     if (m_backend) {
         connect(m_backend, &KbLayoutBackend::layoutChanged,
                 this, &KbLayout::updateWidgetFromBackend);
+
+        // Connect LED state signal (X11 only)
+        auto *x11Backend = qobject_cast<X11Backend*>(m_backend);
+        if (x11Backend) {
+            connect(x11Backend, &X11Backend::ledStateChanged,
+                    this, &KbLayout::updateLedState);
+
+            // Create KbdKeeper for X11
+            m_keeper = new WinKbdKeeper(
+                static_cast<xcb_connection_t*>(x11Backend->connection()),
+                x11Backend->deviceId(),
+                KeeperType::Global);
+            m_keeper->setup();
+        }
     }
 
     // Connect widget signals to plugin slots
@@ -73,6 +88,12 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
             this, &KbLayout::onConfigureRequested);
 
     settingsChanged();
+}
+
+KbLayout::~KbLayout()
+{
+    if (m_keeper)
+        delete m_keeper;
 }
 
 void KbLayout::createBackend()
@@ -164,8 +185,19 @@ void KbLayout::realign()
 void KbLayout::settingsChanged()
 {
     m_settings.init(settings());
+
+    // Apply LED settings
+    m_widget.setShowCaps(m_settings.showCaps());
+    m_widget.setShowNum(m_settings.showNum());
+    m_widget.setShowScroll(m_settings.showScroll());
+
     m_widget.setup();
     updateWidgetFromBackend();
+}
+
+void KbLayout::updateLedState(bool caps, bool num, bool scroll)
+{
+    m_widget.setLedState(caps, num, scroll);
 }
 
 void KbLayout::activated(ActivationReason reason)

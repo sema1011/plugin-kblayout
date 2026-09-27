@@ -39,6 +39,7 @@ set(HEADERS
     src/kblayoutbackend.h
     src/kblayoutsettings.h
     src/kblayoutsettingsdialog.h
+    src/kbdkeeper.h
 )
 
 set(SOURCES
@@ -48,6 +49,11 @@ set(SOURCES
     src/kblayoutbackend.cpp
     src/kblayoutsettings.cpp
     src/kblayoutsettingsdialog.cpp
+    src/kbdkeeper.cpp
+)
+
+set(UI_FILES
+    src/kblayoutsettingsdialog.ui
 )
 
 set(LIBRARIES

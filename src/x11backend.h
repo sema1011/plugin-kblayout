@@ -54,6 +54,18 @@ public:
     void setLayout(int index) override;
     void nextLayout() override;
 
+signals:
+    /**
+     * \brief Emitted when LED state changes (Caps/Num/Scroll).
+     */
+    void ledStateChanged(bool caps, bool num, bool scroll);
+
+    /**
+     * \brief Accessors for internal X11 state.
+     */
+    void *connection() const { return m_connection; }
+    int deviceId() const { return m_deviceId; }
+
 private:
     friend class pimpl::NativeEventFilter;
     bool init();

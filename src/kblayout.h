@@ -29,6 +29,7 @@
 #include "kblayoutwidget.h"
 #include "kblayoutbackend.h"
 #include "kblayoutsettings.h"
+#include "kbdkeeper.h"
 
 class QDialog;
 
@@ -72,10 +73,12 @@ private:
     void createBackend();
     void updateWidgetFromBackend();
     void showLayoutNotification(const QString &layoutName);
+    void updateLedState(bool caps, bool num, bool scroll);
 
     KbLayoutSettings m_settings;
     KbLayoutBackend *m_backend{nullptr};
     KbLayoutWidget  m_widget;
+    KbLayoutKeeper *m_keeper{nullptr};
     int m_lastLayoutIdx{-1}; // Track changes for notifications
 };
 

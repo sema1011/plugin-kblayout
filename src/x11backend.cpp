@@ -68,8 +68,17 @@ public:
 
                 if (sevent->changed & XCB_XKB_STATE_PART_GROUP_STATE) {
                     emit m_backend->layoutChanged(sevent->group);
-                    return true;
                 }
+
+                // Also emit LED state changes
+                if (sevent->changed & (XCB_XKB_STATE_PART_MODIFIER_BASE
+                                      | XCB_XKB_STATE_PART_MODIFIER_LATCHED
+                                      | XCB_XKB_STATE_PART_MODIFIER_LOCKED
+                                      | XCB_XKB_STATE_PART_LED_GROUP)) {
+                    m_backend->readLedState();
+                }
+
+                return true;
             }
             else if (sevent->xkbType == XCB_XKB_NEW_KEYBOARD_NOTIFY) {
                 m_backend->readState();
@@ -140,6 +149,7 @@ bool X11Backend::init()
     qApp->installNativeEventFilter(m_eventFilter);
 
     readState();
+    readLedState();
     return true;
 }
 
@@ -279,4 +289,19 @@ void X11Backend::nextLayout()
     int current = currentLayout();
     int next = (current + 1) % m_layoutSyms.size();
     setLayout(next);
+}
+
+void X11Backend::readLedState()
+{
+    if (!m_state)
+        return;
+
+    bool caps = xkb_state_led_index_is_active(static_cast<xkb_state*>(m_state),
+                                               XKB_LED_INDEX_CAPS);
+    bool num = xkb_state_led_index_is_active(static_cast<xkb_state*>(m_state),
+                                              XKB_LED_INDEX_NUM);
+    bool scroll = xkb_state_led_index_is_active(static_cast<xkb_state*>(m_state),
+                                                 XKB_LED_INDEX_SCROLL);
+
+    emit ledStateChanged(caps, num, scroll);
 }

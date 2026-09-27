@@ -29,6 +29,7 @@
 
 class QToolButton;
 class QMenu;
+class QLabel;
 class ILXQtPanel;
 
 /**
@@ -36,6 +37,7 @@ class ILXQtPanel;
  *
  * Shows the current keyboard layout code (e.g. "EN", "RU") and provides
  * switching via left-click (next layout) and right-click (context menu).
+ * Also shows Caps/Num/Scroll LED indicators.
  *
  * Signals:
  *   - layoutNextRequested() — left click / "Next Layout" action
@@ -68,6 +70,18 @@ public:
      * \brief Update the current layout index (display + tooltip).
      */
     void setCurrentLayout(int index);
+
+    /**
+     * \brief Update LED state (Caps/Num/Scroll lock).
+     */
+    void setLedState(bool caps, bool num, bool scroll);
+
+    /**
+     * \brief Set LED visibility flags.
+     */
+    void setShowCaps(bool show);
+    void setShowNum(bool show);
+    void setShowScroll(bool show);
 
 public slots:
     /**
@@ -109,7 +123,18 @@ private:
     QStringList m_layoutNames;
     int m_currentIdx{-1};
     bool m_showText{true};
+    bool m_showCaps{false};
+    bool m_showNum{false};
+    bool m_showScroll{false};
     int m_fontSize{9};
+
+    // LED indicators
+    QLabel *m_capsLabel{nullptr};
+    QLabel *m_numLabel{nullptr};
+    QLabel *m_scrollLabel{nullptr};
+    bool m_capsActive{false};
+    bool m_numActive{false};
+    bool m_scrollActive{false};
 };
 
 #endif // KBLAYOUTWIDGET_H

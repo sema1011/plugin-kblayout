@@ -30,6 +30,7 @@
 #include <QMouseEvent>
 #include <QFont>
 #include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QAction>
 #include <QScreen>
 #include <QGuiApplication>
@@ -40,17 +41,37 @@ KbLayoutWidget::KbLayoutWidget(QWidget *parent) :
 {
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
+    auto *mainLayout = new QHBoxLayout(this);
+    mainLayout->setContentsMargins(2, 0, 2, 0);
+    mainLayout->setSpacing(2);
+
+    // Layout button
     m_button = new QToolButton(this);
     m_button->setPopupMode(QToolButton::InstantPopup);
     m_button->setToolButtonStyle(Qt::ToolButtonTextOnly);
     m_button->setFont(QFont(QStringLiteral("Sans"), m_fontSize, QFont::Bold));
-
     m_menu = new QMenu(this);
     m_button->setMenu(m_menu);
+    mainLayout->addWidget(m_button);
 
-    QHBoxLayout *layout = new QHBoxLayout(this);
-    layout->setContentsMargins(2, 0, 2, 0);
-    layout->addWidget(m_button);
+    // LED indicators (initially hidden)
+    m_capsLabel = new QLabel("Caps", this);
+    m_capsLabel->setFixedSize(24, 16);
+    m_capsLabel->setStyleSheet("color: gray; font-size: 9px;");
+    m_capsLabel->setVisible(false);
+    mainLayout->addWidget(m_capsLabel);
+
+    m_numLabel = new QLabel("Num", this);
+    m_numLabel->setFixedSize(24, 16);
+    m_numLabel->setStyleSheet("color: gray; font-size: 9px;");
+    m_numLabel->setVisible(false);
+    mainLayout->addWidget(m_numLabel);
+
+    m_scrollLabel = new QLabel("Scr", this);
+    m_scrollLabel->setFixedSize(24, 16);
+    m_scrollLabel->setStyleSheet("color: gray; font-size: 9px;");
+    m_scrollLabel->setVisible(false);
+    mainLayout->addWidget(m_scrollLabel);
 
     updateDisplay();
 }
@@ -81,6 +102,81 @@ void KbLayoutWidget::setCurrentLayout(int index)
     updateDisplay();
 }
 
+void KbLayoutWidget::setLedState(bool caps, bool num, bool scroll)
+{
+    bool changed = (caps != m_capsActive || num != m_numActive || scroll != m_scrollActive);
+
+    m_capsActive = caps;
+    m_numActive = num;
+    m_scrollActive = scroll;
+
+    // Update Caps LED
+    if (m_showCaps) {
+        m_capsLabel->setVisible(true);
+        m_capsLabel->setStyleSheet(caps
+            ? "color: green; font-size: 9px;"
+            : "color: gray; font-size: 9px;");
+    }
+
+    // Update Num LED
+    if (m_showNum) {
+        m_numLabel->setVisible(true);
+        m_numLabel->setStyleSheet(num
+            ? "color: green; font-size: 9px;"
+            : "color: gray; font-size: 9px;");
+    }
+
+    // Update Scroll LED
+    if (m_showScroll) {
+        m_scrollLabel->setVisible(true);
+        m_scrollLabel->setStyleSheet(scroll
+            ? "color: green; font-size: 9px;"
+            : "color: gray; font-size: 9px;");
+    }
+}
+
+void KbLayoutWidget::setShowCaps(bool show)
+{
+    m_showCaps = show;
+    if (!show && m_capsLabel)
+        m_capsLabel->setVisible(false);
+}
+
+void KbLayoutWidget::setShowNum(bool show)
+{
+    m_showNum = show;
+    if (!show && m_numLabel)
+        m_numLabel->setVisible(false);
+}
+
+void KbLayoutWidget::setShowScroll(bool show)
+{
+    m_showScroll = show;
+    if (!show && m_scrollLabel)
+        m_scrollLabel->setVisible(false);
+}
+
+    // Update Num LED
+    if (m_showNum) {
+        m_numLabel->setVisible(true);
+        m_numLabel->setStyleSheet(num
+            ? "color: green; font-size: 9px;"
+            : "color: gray; font-size: 9px;");
+    }
+
+    // Update Scroll LED
+    if (m_showScroll) {
+        m_scrollLabel->setVisible(true);
+        m_scrollLabel->setStyleSheet(scroll
+            ? "color: green; font-size: 9px;"
+            : "color: gray; font-size: 9px;");
+    }
+
+    if (changed) {
+        // Emit signal if needed
+    }
+}
+
 void KbLayoutWidget::onLayoutChanged(int layoutIndex)
 {
     m_currentIdx = layoutIndex;
@@ -100,7 +196,7 @@ void KbLayoutWidget::updateDisplay()
             m_button->setText(m_layoutSyms[m_currentIdx].toUpper());
         }
 
-        // Tooltip: full layout info + current indicator
+        // Tooltip: full layout info + controls
         QString tooltip;
         if (!m_layoutNames.isEmpty() && m_currentIdx < m_layoutNames.size()) {
             tooltip = QString("%1 (%2)")

@@ -25,80 +25,62 @@
 #include "kblayoutsettingsdialog.h"
 #include "kblayoutsettings.h"
 
-#include <QCheckBox>
-#include <QSpinBox>
-#include <QVBoxLayout>
-#include <QGroupBox>
-#include <QDialogButtonBox>
-#include <QLabel>
-#include <QPushButton>
+#include "ui_kblayoutsettingsdialog.h"
+#include <QAbstractButton>
 
 KbLayoutSettingsDialog::KbLayoutSettingsDialog(KbLayoutSettings *settings, QWidget *parent) :
     QDialog(parent),
-    m_settings(settings)
+    m_settings(settings),
+    ui(new Ui_KbLayoutSettingsDialog)
 {
     setWindowTitle(tr("Keyboard Layout Switcher — Settings"));
     setAttribute(Qt::WA_DeleteOnClose);
 
-    setupUi();
-}
+    ui->setupUi(this);
+    loadSettings();
 
-void KbLayoutSettingsDialog::setupUi()
-{
-    auto *mainLayout = new QVBoxLayout(this);
-
-    // Display group
-    auto *displayGroup = new QGroupBox(tr("Display"), this);
-    auto *displayLayout = new QVBoxLayout(displayGroup);
-
-    m_chkShowText = new QCheckBox(tr("Show layout text (e.g. EN, RU)"), displayGroup);
-    m_chkShowText->setChecked(m_settings->showText());
-    displayLayout->addWidget(m_chkShowText);
-
-    m_chkShowFlag = new QCheckBox(tr("Show flag icon"), displayGroup);
-    m_chkShowFlag->setChecked(m_settings->showFlag());
-    m_chkShowFlag->setEnabled(false); // TODO: implement flag support
-    displayLayout->addWidget(m_chkShowFlag);
-
-    auto *fontSizeLayout = new QHBoxLayout();
-    fontSizeLayout->addWidget(new QLabel(tr("Font size:"), displayGroup));
-    m_spinFontSize = new QSpinBox(displayGroup);
-    m_spinFontSize->setRange(6, 24);
-    m_spinFontSize->setValue(m_settings->fontSize());
-    fontSizeLayout->addWidget(m_spinFontSize);
-    displayLayout->addLayout(fontSizeLayout);
-
-    mainLayout->addWidget(displayGroup);
-
-    // Behavior group
-    auto *behaviorGroup = new QGroupBox(tr("Behavior"), this);
-    auto *behaviorLayout = new QVBoxLayout(behaviorGroup);
-
-    m_chkNotification = new QCheckBox(tr("Show notification on layout switch"), behaviorGroup);
-    m_chkNotification->setChecked(m_settings->showNotification());
-    behaviorLayout->addWidget(m_chkNotification);
-
-    mainLayout->addWidget(behaviorGroup);
-
-    // Buttons
-    auto *buttons = new QDialogButtonBox(
-        QDialogButtonBox::Apply | QDialogButtonBox::Close, this);
-    connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    connect(buttons, &QDialogButtonBox::clicked, this, [this, buttons](QAbstractButton *btn) {
-        QPushButton *applyBtn = buttons->button(QDialogButtonBox::Apply);
-        if (applyBtn && applyBtn == qobject_cast<QPushButton*>(btn)) {
+    // Connect Apply button
+    connect(ui->buttonBox, &QDialogButtonBox::clicked, this, [this](QAbstractButton *btn) {
+        if (ui->buttonBox->button(QDialogButtonBox::Apply) == btn) {
             onApply();
         }
     });
+}
 
-    mainLayout->addWidget(buttons);
+KbLayoutSettingsDialog::~KbLayoutSettingsDialog() = default;
+
+void KbLayoutSettingsDialog::setupUi()
+{
+    // UI is set up by ui_kblayoutsettingsdialog.h from .ui file
+}
+
+void KbLayoutSettingsDialog::loadSettings()
+{
+    if (!m_settings)
+        return;
+
+    ui->chkShowText->setChecked(m_settings->showText());
+    ui->chkShowCaps->setChecked(m_settings->showCaps());
+    ui->chkShowNum->setChecked(m_settings->showNum());
+    ui->chkShowScroll->setChecked(m_settings->showScroll());
+    ui->spinFontSize->setValue(m_settings->fontSize());
+    ui->chkNotification->setChecked(m_settings->showNotification());
+}
+
+void KbLayoutSettingsDialog::saveSettings()
+{
+    if (!m_settings)
+        return;
+
+    m_settings->setShowText(ui->chkShowText->isChecked());
+    m_settings->setShowCaps(ui->chkShowCaps->isChecked());
+    m_settings->setShowNum(ui->chkShowNum->isChecked());
+    m_settings->setShowScroll(ui->chkShowScroll->isChecked());
+    m_settings->setFontSize(ui->spinFontSize->value());
+    m_settings->setShowNotification(ui->chkNotification->isChecked());
 }
 
 void KbLayoutSettingsDialog::onApply()
 {
-    m_settings->setShowText(m_chkShowText->isChecked());
-    m_settings->setShowFlag(m_chkShowFlag->isChecked());
-    m_settings->setFontSize(m_spinFontSize->value());
-    m_settings->setShowNotification(m_chkNotification->isChecked());
+    saveSettings();
 }

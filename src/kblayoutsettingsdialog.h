@@ -27,38 +27,31 @@
 
 #include <QDialog>
 
+class Ui_KbLayoutSettingsDialog;
 class KbLayoutSettings;
-class QCheckBox;
-class QSpinBox;
 
 /**
  * \brief Configuration dialog for the keyboard layout switcher.
  *
- * Provides options for:
- * - Show text / flag / both
- * - Font size
- * - Show notification on switch
- * - Cycle all layouts
+ * Uses Qt Designer UI file for layout.
  */
 class KbLayoutSettingsDialog : public QDialog
 {
     Q_OBJECT
 public:
     explicit KbLayoutSettingsDialog(KbLayoutSettings *settings, QWidget *parent = nullptr);
-    ~KbLayoutSettingsDialog() override = default;
+    ~KbLayoutSettingsDialog() override;
 
 private slots:
     void onApply();
 
 private:
     void setupUi();
+    void loadSettings();
+    void saveSettings();
 
-    KbLayoutSettings *m_settings;
-
-    QCheckBox *m_chkShowText{nullptr};
-    QCheckBox *m_chkShowFlag{nullptr};
-    QSpinBox *m_spinFontSize{nullptr};
-    QCheckBox *m_chkNotification{nullptr};
+    Ui_KbLayoutSettingsDialog *ui{nullptr};
+    KbLayoutSettings *m_settings{nullptr};
 };
 
 #endif // KBLAYOUTSETTINGSDIALOG_H

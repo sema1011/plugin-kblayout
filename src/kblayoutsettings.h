@@ -48,19 +48,21 @@ public:
 
     // Display options
     bool showText() const;
-    bool showFlag() const;
+    bool showCaps() const;
+    bool showNum() const;
+    bool showScroll() const;
     int fontSize() const;
 
     // Behavior options
     bool showNotification() const;
-    bool cycleAllLayouts() const;
 
     // Setters
     void setShowText(bool show);
-    void setShowFlag(bool show);
+    void setShowCaps(bool show);
+    void setShowNum(bool show);
+    void setShowScroll(bool show);
     void setFontSize(int size);
     void setShowNotification(bool show);
-    void setCycleAllLayouts(bool cycle);
 
 private:
     PluginSettings *m_settings{nullptr};
