@@ -267,6 +267,9 @@ void WaylandBackend::readKWinLayoutsSync()
     if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
         // arg(0) is the a(sss) array
         QVariant variant = reply.arguments().at(0);
+        qDebug() << "kblayout: getLayoutsList D-Bus reply type:" << variant.typeId()
+                 << "isValid:" << variant.isValid()
+                 << "toList size:" << variant.toList().size();
         QVariantList layouts = variant.toList();
 
         for (const auto &layout : layouts) {
@@ -274,11 +277,18 @@ void WaylandBackend::readKWinLayoutsSync()
             if (tuple.size() >= 3) {
                 QString sym = tuple[0].toString();
                 QString displayName = tuple[2].toString();
+                qDebug() << "kblayout:   layout:" << sym << displayName;
                 if (!sym.isEmpty()) {
                     m_layoutSyms.append(sym);
                     m_layoutNames.append(displayName.isEmpty() ? sym.toUpper() : displayName);
                 }
             }
+        }
+    } else {
+        qWarning() << "kblayout: getLayoutsList D-Bus reply type:" << reply.type()
+                   << "args:" << reply.arguments().size();
+        if (reply.type() == QDBusMessage::ErrorMessage) {
+            qWarning() << "kblayout:   error:" << reply.errorName() << reply.errorMessage();
         }
     }
 
