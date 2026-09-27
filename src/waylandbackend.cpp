@@ -188,16 +188,10 @@ void WaylandBackend::readKWinLayouts()
     if (!m_kwinLayouts)
         return;
 
-    // D-Bus returns "a(sss)" — QList<QTuple<QString, QString, QString>>
-    // Use QDBusMessage to manually parse the response
-    QDBusMessage msg = QDBusMessage::createMethodCall(
-        m_kwinLayouts->service(),
-        m_kwinLayouts->path(),
-        m_kwinLayouts->interface(),
-        QStringLiteral("getLayoutsList"));
+    // D-Bus returns "a(sss)" — use QDBusInterface::call() with timeout
+    QDBusMessage reply = m_kwinLayouts->call(QStringLiteral("getLayoutsList"));
 
-    QDBusMessage reply = QDBusConnection::sessionBus().call(msg);
-    if (reply.type() == QDBusMessage::ReplyMessage) {
+    if (reply.type() == QDBusMessage::ReplyMessage && reply.arguments().size() >= 1) {
         m_layoutSyms.clear();
         m_layoutNames.clear();
 
