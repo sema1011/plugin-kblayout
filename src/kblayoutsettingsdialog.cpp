@@ -49,9 +49,8 @@ KbLayoutSettingsDialog::KbLayoutSettingsDialog(KbLayoutSettings *settings, QWidg
     });
 
     // Connect Configure layouts button
-    connect(ui->btnConfigureLayouts, &QPushButton::clicked, this, [this]() {
-        QProcess::startDetached(QStringLiteral("lxqt-config-input"),
-                               {QStringLiteral("--show-page"), QStringLiteral("Keyboard Layout")});
+    connect(ui->btnConfigureLayouts, &QPushButton::clicked, this, []() {
+        QProcess::startDetached(QStringLiteral("lxqt-config-input"));
     });
 }
 

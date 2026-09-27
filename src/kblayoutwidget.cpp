@@ -52,7 +52,7 @@ KbLayoutWidget::KbLayoutWidget(QWidget *parent) :
     m_button->setToolButtonStyle(Qt::ToolButtonTextOnly);
     m_button->setFont(QFont(QStringLiteral("Sans"), m_fontSize, QFont::Bold));
     m_button->setContextMenuPolicy(Qt::NoContextMenu);
-    m_menu = new QMenu(this);
+    m_button->setIconSize(QSize(24, 24));  // Explicit icon size for flag display
     mainLayout->addWidget(m_button);
 
     // Install event filter for both left and right click handling
