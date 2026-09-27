@@ -15,17 +15,8 @@ if(NOT DEFINED KBLAYOUT_WAYLAND)
 endif()
 
 # Qt6
-find_package(Qt6 REQUIRED COMPONENTS Widgets Xml DBus Tools)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Xml DBus)
 qt_standard_project_setup()
-
-# Find lrelease tool in Qt6 prefix
-find_program(QT_LRELEASE_EXECUTABLE lrelease
-    HINTS ${Qt6Core_DIR}/../../../bin ${Qt6Core_DIR}/../../bin
-    PATHS /usr/lib64/qt6/bin /usr/lib/qt6/bin
-)
-if(NOT QT_LRELEASE_EXECUTABLE)
-    message(WARNING "lrelease not found — translations will not be compiled")
-endif()
 
 # LXQt
 find_package(lxqt REQUIRED)
@@ -162,25 +153,17 @@ foreach(ts_file ${TRANSLATION_TS_FILES})
         continue()
     endif()
     
-    set(qm_file "${CMAKE_BINARY_DIR}/translations/${ts_name}.qm")
-    list(APPEND TRANSLATION_QM_FILES ${qm_file})
-    
-    add_custom_command(
-        OUTPUT ${qm_file}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/translations
-        COMMAND ${QT_LRELEASE_EXECUTABLE} ${ts_file} -qm ${qm_file}
-        DEPENDS ${ts_file}
-        COMMENT "Compiling translation: ${ts_name}.ts -> ${ts_name}.qm"
-    )
+    qt_add_translation(QM_FILES ${ts_file})
+    list(APPEND TRANSLATION_QM_FILES ${QM_FILES})
 endforeach()
 
 # Create a target to build all translations
-add_custom_target(translations ALL DEPENDS ${TRANSLATION_QM_FILES})
-
-# Install compiled .qm files
-install(FILES ${TRANSLATION_QM_FILES}
-    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/translations"
-)
+if(TRANSLATION_QM_FILES)
+    add_custom_target(translations ALL DEPENDS ${TRANSLATION_QM_FILES})
+    install(FILES ${TRANSLATION_QM_FILES}
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/translations"
+    )
+endif()
 
 # Install translations
 install(FILES translations/ru.ts
