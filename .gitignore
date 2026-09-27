@@ -1,0 +1,13 @@
+# Build artifacts
+build/
+*.so
+*.o
+*.moc
+*.qm
+*.cmake.autogen
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+CMakeFiles/
+kblayout_autogen/
+.qt/

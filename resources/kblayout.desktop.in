@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=LXQtPanelPluginService
+Encoding=UTF-8
+X-LXQt-Plugin=true
+X-LXQt-RequiresLib=true
+Name=Keyboard Layout Switcher
+Name[ru]=Переключатель раскладки клавиатуры
+Comment=Switch keyboard layout by clicking on the panel indicator
+Comment[ru]=Переключение раскладки клавиатуры по клику на индикаторе панели
+Icon=input-keyboard
+X-LXQt-SpecialActions=NextLayout;PreviousLayout;
