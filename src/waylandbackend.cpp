@@ -213,8 +213,14 @@ void WaylandBackend::readKWinLayouts()
     if (!m_kwinLayouts || !m_kwinLayouts->isValid())
         return;
 
-    if (m_asyncProcess)
-        delete m_asyncProcess;
+    // Kill any running async process from a previous call
+    if (m_asyncProcess && m_asyncProcess->state() != QProcess::NotRunning) {
+        m_asyncProcess->kill();
+        m_asyncProcess->waitForFinished(Kblayout::ShortProcessTimeoutMs);
+        m_asyncProcess->deleteLater();
+    }
+    m_asyncProcess = nullptr;
+
     m_asyncProcess = new QProcess(this);
 
     m_asyncProcess->start("qdbus6", {
@@ -302,8 +308,16 @@ void WaylandBackend::readKXkbConfig()
 {
     // Async: use kreadconfig6 to read layout list from kxkbrc (non-blocking).
     // Only called after init (via _on_kwin_layoutChanged).
-    if (m_asyncProcess)
-        delete m_asyncProcess;
+    // Kill any running async process from a previous call
+    if (m_asyncProcess && m_asyncProcess->state() != QProcess::NotRunning) {
+        m_asyncProcess->kill();
+        m_asyncProcess->waitForFinished(Kblayout::ShortProcessTimeoutMs);
+    }
+    if (m_asyncProcess) {
+        m_asyncProcess->deleteLater();
+        m_asyncProcess = nullptr;
+    }
+
     m_asyncProcess = new QProcess(this);
 
     m_asyncProcess->start("kreadconfig6", {
@@ -937,10 +951,14 @@ void WaylandBackend::_on_kwin_layoutChanged(uint index)
     // Cache the index from D-Bus signal (avoids blocking D-Bus call)
     m_currentLayoutIndex = static_cast<int>(index);
 
-    // Only refresh layouts asynchronously after init is fully complete
+    // Only refresh layout names asynchronously once after init completes.
+    // Layouts are already populated from sync init, so this is just a
+    // best-effort refresh of display names — skip if already done.
     if (m_kwinInitDone) {
+        m_kwinInitDone = false; // prevent further calls
         readKWinLayouts();
     }
+
     emit layoutChanged(m_currentLayoutIndex);
 }
 
