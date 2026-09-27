@@ -18,8 +18,11 @@ endif()
 find_package(Qt6 REQUIRED COMPONENTS Widgets Xml DBus Tools)
 qt_standard_project_setup()
 
-# Find lrelease tool
-find_program(QT_LRELEASE_EXECUTABLE lrelease)
+# Find lrelease tool in Qt6 prefix
+find_program(QT_LRELEASE_EXECUTABLE lrelease
+    HINTS ${Qt6Core_DIR}/../../../bin ${Qt6Core_DIR}/../../bin
+    PATHS /usr/lib64/qt6/bin /usr/lib/qt6/bin
+)
 if(NOT QT_LRELEASE_EXECUTABLE)
     message(WARNING "lrelease not found — translations will not be compiled")
 endif()
