@@ -18,6 +18,16 @@ endif()
 find_package(Qt6 REQUIRED COMPONENTS Widgets Xml DBus)
 qt_standard_project_setup()
 
+# Find lrelease tool
+find_program(QT_LRELEASE_EXECUTABLE lrelease HINTS ${Qt6_DIR}/../../../bin)
+if(NOT QT_LRELEASE_EXECUTABLE)
+    # Try Qt6 lrelease
+    find_program(QT_LRELEASE_EXECUTABLE lrelease)
+endif()
+if(NOT QT_LRELEASE_EXECUTABLE)
+    message(WARNING "lrelease not found — translations will not be compiled")
+endif()
+
 # LXQt
 find_package(lxqt REQUIRED)
 
@@ -159,7 +169,7 @@ foreach(ts_file ${TRANSLATION_TS_FILES})
     add_custom_command(
         OUTPUT ${qm_file}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/translations
-        COMMAND lrelease ${ts_file} -qm ${qm_file}
+        COMMAND ${QT_LRELEASE_EXECUTABLE} ${ts_file} -qm ${qm_file}
         DEPENDS ${ts_file}
         COMMENT "Compiling translation: ${ts_name}.ts -> ${ts_name}.qm"
     )
