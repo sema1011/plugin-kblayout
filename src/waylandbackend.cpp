@@ -188,25 +188,30 @@ void WaylandBackend::readKWinLayouts()
     if (!m_kwinLayouts)
         return;
 
-    QDBusReply<QVariant> reply =
-        m_kwinLayouts->call(QStringLiteral("getLayoutsList"));
-    qDebug() << "kblayout: D-Bus isValid=" << reply.isValid()
-             << "error=" << reply.error().message();
+    // D-Bus returns "a(sss)" — QList<QTuple<QString, QString, QString>>
+    // Use QDBusMessage to manually parse the response
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        m_kwinLayouts->service(),
+        m_kwinLayouts->path(),
+        m_kwinLayouts->interface(),
+        QStringLiteral("getLayoutsList"));
+
+    QDBusReply<QDBusMessage> reply =
+        QDBusConnection::sessionBus().call(msg);
+
     if (reply.isValid()) {
         m_layoutSyms.clear();
         m_layoutNames.clear();
-        qDebug() << "kblayout: D-Bus raw value type=" << reply.value().typeName();
-        QVariantList outer = reply.value().toList();
-        qDebug() << "kblayout: D-Bus outer list size=" << outer.size();
-        for (int i = 0; i < outer.size(); ++i) {
-            QVariantList inner = outer[i].toList();
-            qDebug() << "kblayout: D-Bus item" << i << "inner size=" << inner.size();
-            // D-Bus returns: [symbol, variant, display_name]
-            if (inner.size() >= 3) {
-                m_layoutSyms.append(inner[0].toString());    // sym (us, ru)
-                m_layoutNames.append(inner[2].toString());   // display name
-            }
+
+        QDBusArgument arg = reply.value().argumentAt(0).value<QDBusArgument>();
+        arg.beginArray();
+        while (!arg.atEnd()) {
+            QString sym, variant, displayName;
+            arg >> sym >> variant >> displayName;
+            m_layoutSyms.append(sym);
+            m_layoutNames.append(displayName.isEmpty() ? sym.toUpper() : displayName);
         }
+        arg.endArray();
     }
 }
 
