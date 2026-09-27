@@ -259,14 +259,14 @@ void WaylandBackend::readKWinLayoutsSync()
         QStringLiteral("org.kde.KeyboardLayouts"),
         QStringLiteral("getLayoutsList"));
 
-    QDBusReply<QVariant> reply =
+    QDBusMessage reply =
         QDBusConnection::sessionBus().call(msg,
                                            QDBus::Block,
                                            Kblayout::ProcessTimeoutMs);
 
-    if (reply.isValid()) {
-        // QVariant contains QVariantList of QVariantTuple
-        QVariant variant = reply.value();
+    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+        // arg(0) is the a(sss) array
+        QVariant variant = reply.arguments().at(0);
         QVariantList layouts = variant.toList();
 
         for (const auto &layout : layouts) {
