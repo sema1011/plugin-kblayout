@@ -133,9 +133,17 @@ bool WaylandBackend::initKWin()
             SLOT(_on_kwin_layoutChanged(uint)));
 
         // Initialize cached layout index from D-Bus
-        QDBusReply<int> reply = m_kwinLayouts->call(QStringLiteral("getLayout"));
-        if (reply.isValid())
-            m_currentLayoutIndex = reply.value();
+        QDBusMessage getMsg = QDBusMessage::createMethodCall(
+            QStringLiteral("org.kde.KWin"),
+            QStringLiteral("/Layouts"),
+            QStringLiteral("org.kde.KeyboardLayouts"),
+            QStringLiteral("getLayout"));
+        QDBusReply<uint> getReply =
+            QDBusConnection::sessionBus().call(getMsg,
+                                               QDBus::Block,
+                                               Kblayout::ProcessTimeoutMs);
+        if (getReply.isValid())
+            m_currentLayoutIndex = static_cast<int>(getReply.value());
 
         // Synchronous read via D-Bus — ensures we have layouts before init returns
         readKWinLayoutsSync();
@@ -244,27 +252,32 @@ void WaylandBackend::readKWinLayoutsSync()
     m_layoutNames.clear();
 
     // Call getLayoutsList synchronously via D-Bus
+    // Returns a(sss) — array of (symbol, variant, display_name)
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        QStringLiteral("org.kde.KWin"),
+        QStringLiteral("/Layouts"),
+        QStringLiteral("org.kde.KeyboardLayouts"),
+        QStringLiteral("getLayoutsList"));
+
     QDBusReply<QVariant> reply =
-        m_kwinLayouts->call(QStringLiteral("getLayoutsList"));
+        QDBusConnection::sessionBus().call(msg,
+                                           QDBus::Block,
+                                           Kblayout::ProcessTimeoutMs);
 
     if (reply.isValid()) {
-        // D-Bus returns a nested variant: Argument: a(sss) {...}
-        // Strip "Argument: " prefix and parse as JSON-like
+        // QVariant contains QVariantList of QVariantTuple
         QVariant variant = reply.value();
-        QString str = variant.toString();
+        QVariantList layouts = variant.toList();
 
-        // Parse: Argument: a(sss) {[Argument: (sss) "us", "", "English (US)"], ...}
-        // Extract all "sym", "", "Display Name" triplets
-        QRegularExpression re("\"(\\w+)\",\\s*\"([^\"]*)\",\\s*\"([^\"]*)\"");
-        QRegularExpressionMatchIterator it = re.globalMatch(str);
-
-        while (it.hasNext()) {
-            QRegularExpressionMatch match = it.next();
-            QString sym = match.captured(1);
-            QString displayName = match.captured(3);
-            if (!sym.isEmpty()) {
-                m_layoutSyms.append(sym);
-                m_layoutNames.append(displayName.isEmpty() ? sym.toUpper() : displayName);
+        for (const auto &layout : layouts) {
+            QVariantList tuple = layout.toList();
+            if (tuple.size() >= 3) {
+                QString sym = tuple[0].toString();
+                QString displayName = tuple[2].toString();
+                if (!sym.isEmpty()) {
+                    m_layoutSyms.append(sym);
+                    m_layoutNames.append(displayName.isEmpty() ? sym.toUpper() : displayName);
+                }
             }
         }
     }
