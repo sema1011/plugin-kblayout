@@ -851,17 +851,24 @@ void WaylandBackend::setLayout(int index)
         return;
 
     if (m_compositor == QLatin1String("kwin")) {
-        // Synchronous D-Bus call — m_kwinLayouts is already connected
-        if (m_kwinLayouts && m_kwinLayouts->isValid()) {
-            QDBusReply<void> reply =
-                m_kwinLayouts->call(QStringLiteral("setLayout"), index);
-            if (reply.isValid()) {
-                m_currentLayoutIndex = index;
-                emit layoutChanged(m_currentLayoutIndex);
-            } else {
-                qWarning() << "kblayout: KWin setLayout D-Bus call failed:"
-                           << reply.error().message();
-            }
+        // Synchronous D-Bus call via QDBusMessage (more reliable than QDBusInterface)
+        QDBusMessage msg = QDBusMessage::createMethodCall(
+            QStringLiteral("org.kde.KWin"),
+            QStringLiteral("/Layouts"),
+            QStringLiteral("org.kde.KeyboardLayouts"),
+            QStringLiteral("setLayout"));
+        msg << static_cast<uint>(index);
+
+        QDBusReply<bool> reply =
+            QDBusConnection::sessionBus().call(msg,
+                                               QDBus::Block,
+                                               Kblayout::ProcessTimeoutMs);
+        if (reply.isValid()) {
+            m_currentLayoutIndex = index;
+            emit layoutChanged(m_currentLayoutIndex);
+        } else {
+            qWarning() << "kblayout: KWin setLayout D-Bus call failed:"
+                       << reply.error().message();
         }
         return;
     }
