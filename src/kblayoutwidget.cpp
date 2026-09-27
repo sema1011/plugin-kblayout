@@ -55,10 +55,10 @@ KbLayoutWidget::KbLayoutWidget(QWidget *parent) :
     m_menu = new QMenu(this);
     mainLayout->addWidget(m_button);
 
-    // Connect button clicks
-    connect(m_button, &QToolButton::clicked, this, [this]() {
-        emit layoutNextRequested();
-    });
+    // Install event filter for both left and right click handling
+    m_button->installEventFilter(this);
+
+    // LED indicators (initially hidden)
 
     // Install event filter for right-click menu
     m_button->installEventFilter(this);
@@ -249,7 +249,11 @@ bool KbLayoutWidget::eventFilter(QObject *obj, QEvent *event)
 {
     if (obj == m_button && event->type() == QEvent::MouseButtonRelease) {
         auto *me = static_cast<QMouseEvent *>(event);
-        if (me->button() == Qt::RightButton) {
+        if (me->button() == Qt::LeftButton) {
+            // Left click: switch to next layout
+            emit layoutNextRequested();
+            return true;
+        } else if (me->button() == Qt::RightButton) {
             // Right click: show context menu
             buildContextMenu();
             QPoint pos = popupPosition();
