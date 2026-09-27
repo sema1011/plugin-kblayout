@@ -104,6 +104,7 @@ bool WaylandBackend::init()
 
 bool WaylandBackend::initKWin()
 {
+    // Try org.kde.KeyboardLayouts first
     m_kwinLayouts = new QDBusInterface(
         QStringLiteral("org.kde.KWin"),
         QStringLiteral("/Layouts"),
@@ -111,29 +112,63 @@ bool WaylandBackend::initKWin()
         QDBusConnection::sessionBus(),
         this);
 
-    if (!m_kwinLayouts->isValid()) {
-        qWarning() << "kblayout: KWin D-Bus interface not available";
-        delete m_kwinLayouts;
-        m_kwinLayouts = nullptr;
-        return false;
+    if (m_kwinLayouts->isValid()) {
+        // Connect to layoutChanged signal
+        QDBusConnection::sessionBus().connect(
+            QStringLiteral("org.kde.KWin"),
+            QStringLiteral("/Layouts"),
+            QStringLiteral("org.kde.KeyboardLayouts"),
+            QStringLiteral("layoutChanged"),
+            this,
+            SLOT(_on_kwin_layoutChanged(uint)));
+
+        readKWinLayouts();
+        m_valid = !m_layoutSyms.isEmpty();
     }
 
-    // Connect to layoutChanged signal
-    QDBusConnection::sessionBus().connect(
-        QStringLiteral("org.kde.KWin"),
-        QStringLiteral("/Layouts"),
-        QStringLiteral("org.kde.KeyboardLayouts"),
-        QStringLiteral("layoutChanged"),
-        this,
-        SLOT(_on_kwin_layoutChanged(uint)));
+    // Fallback: try org.freedesktop.Implementations.Keyboards
+    if (!m_valid && QDBusConnection::sessionBus().isConnected()) {
+        QDBusInterface kbIface(
+            QStringLiteral("org.freedesktop.Implementations"),
+            QStringLiteral("/org/freedesktop/Implementations/Keyboards"),
+            QStringLiteral("org.freedesktop.Implementations.Keyboards"),
+            QDBusConnection::sessionBus(),
+            this);
 
-    readKWinLayouts();
-    m_valid = !m_layoutSyms.isEmpty();
+        if (kbIface.isValid()) {
+            qInfo() << "kblayout: Using org.freedesktop.Implementations.Keyboards";
+            QDBusReply<QList<QVariant>> reply =
+                kbIface.call(QStringLiteral("GetLayoutsList"));
+            if (reply.isValid()) {
+                m_layoutSyms.clear();
+                m_layoutNames.clear();
+                for (const auto &layout : reply.value()) {
+                    if (layout.size() >= 2) {
+                        m_layoutNames.append(layout[0].toString());
+                        m_layoutSyms.append(layout[1].toString());
+                    }
+                }
+                m_valid = !m_layoutSyms.isEmpty();
+            }
+
+            // Connect to layoutChanged signal
+            QDBusConnection::sessionBus().connect(
+                QStringLiteral("org.freedesktop.Implementations"),
+                QStringLiteral("/org/freedesktop/Implementations/Keyboards"),
+                QStringLiteral("org.freedesktop.Implementations.Keyboards"),
+                QStringLiteral("LayoutChanged"),
+                this,
+                SLOT(_on_kwin_layoutChanged(uint)));
+        }
+    }
+
+    // Final fallback: try kxkbrc
     if (!m_valid) {
-        qWarning() << "kblayout: KWin D-Bus returned 0 layouts, trying kxkbrc fallback";
+        qWarning() << "kblayout: D-Bus returned 0 layouts, trying kxkbrc fallback";
         readKXkbConfig();
         m_valid = !m_layoutSyms.isEmpty();
     }
+
     if (m_valid) {
         qInfo() << "kblayout: KWin backend initialized,"
                 << m_layoutSyms.size() << "layouts found";
