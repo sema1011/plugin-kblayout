@@ -245,23 +245,6 @@ void WaylandBackend::readKWinLayouts()
         }
     }
 }
-            }
-        }
-
-        m_layoutSyms.clear();
-        m_layoutNames.clear();
-        for (const auto &tuple : layouts) {
-            // Parse ('us', '', 'English (US)')
-            QStringList parts = tuple.split(',', Qt::SkipEmptyParts);
-            if (parts.size() >= 3) {
-                QString sym = parts[0].trimmed().remove('\'');
-                QString displayName = parts[2].trimmed().remove('\'');
-                m_layoutSyms.append(sym);
-                m_layoutNames.append(displayName.isEmpty() ? sym.toUpper() : displayName);
-            }
-        }
-    }
-}
 
 void WaylandBackend::readKXkbConfig()
 {
