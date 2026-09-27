@@ -227,16 +227,11 @@ void KbLayoutWidget::updateDisplay()
             // Icon mode: show flag icon only
             m_button->setIcon(layoutIcon);
             m_button->setToolButtonStyle(Qt::ToolButtonIconOnly);
-        } else if (m_showText) {
-            // Text mode: show layout symbol
+        } else {
+            // Always show text as fallback (m_showText is the default, not a hard rule)
             m_button->setIcon(QIcon());
             m_button->setToolButtonStyle(Qt::ToolButtonTextOnly);
             m_button->setText(m_layoutSyms[m_currentIdx].toUpper());
-        } else {
-            // Neither icon nor text: show empty button
-            m_button->setIcon(QIcon());
-            m_button->setToolButtonStyle(Qt::ToolButtonIconOnly);
-            m_button->setText(QString());
         }
 
         // Tooltip: full layout info + controls
