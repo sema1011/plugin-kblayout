@@ -29,6 +29,7 @@
 #include <QDBusReply>
 #include <QDBusPendingCall>
 #include <QDBusPendingCallWatcher>
+#include <QDir>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QDebug>
