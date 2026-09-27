@@ -37,9 +37,9 @@ class QTimer;
  * - KWin Wayland: D-Bus org.kde.KeyboardLayouts (full support)
  * - Sway: swaymsg JSON IPC + polling (full support)
  * - Hyprland: hyprctl JSON IPC + polling (full support)
- * - Labwc: wtype key emulation (limited — read-only detection)
- * - Wayfire: wtype key emulation (limited — read-only detection)
- * - Generic fallback: read-only with "us" layout
+ * - Labwc: config parsing + setxkbmap fallback
+ * - Wayfire: config parsing + setxkbmap fallback
+ * - Generic fallback: setxkbmap + XKB_DEFAULT_LAYOUT env
  */
 class WaylandBackend : public KbLayoutBackend
 {
@@ -59,6 +59,18 @@ private:
      * \brief Detect compositor and initialize appropriate backend.
      */
     bool init();
+
+    /**
+     * \brief Check if a process with the given name is running.
+     */
+    static bool isProcessRunning(const QString &processName);
+
+    /**
+     * \brief Parse INI-style config file for xkb_layout key.
+     */
+    static QStringList parseIniLayout(const QString &filePath,
+                                      const QString &section,
+                                      const QString &key);
 
     /**
      * \brief KWin Wayland via D-Bus.
@@ -81,12 +93,12 @@ private:
     void readHyprlandLayouts();
 
     /**
-     * \brief Labwc — key emulation fallback.
+     * \brief Labwc — config parsing + setxkbmap fallback.
      */
     bool initLabwc();
 
     /**
-     * \brief Wayfire — key emulation fallback.
+     * \brief Wayfire — config parsing + setxkbmap fallback.
      */
     bool initWayfire();
 

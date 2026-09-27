@@ -90,9 +90,19 @@ bool WaylandBackend::init()
         return initHyprland();
     }
 
-    // 4. Labwc — check if labwc is running
-    // Labwc doesn't set a specific env var, but we can check if wtype is available
-    // and fall through to generic fallback
+    // 4. Labwc — check if labwc process is running
+    if (isProcessRunning(QStringLiteral("labwc"))) {
+        m_compositor = QStringLiteral("labwc");
+        return initLabwc();
+    }
+
+    // 5. Wayfire — check if wayfire process is running
+    if (isProcessRunning(QStringLiteral("wayfire"))) {
+        m_compositor = QStringLiteral("wayfire");
+        return initWayfire();
+    }
+
+    // 6. Generic fallback
     m_compositor = QStringLiteral("generic");
     qWarning() << "kblayout: Wayland compositor not detected (session type: wayland)";
     return initGeneric();
@@ -467,26 +477,177 @@ void WaylandBackend::readHyprlandLayouts()
 // Labwc / Generic fallback
 // ============================================================================
 
+bool WaylandBackend::isProcessRunning(const QString &processName)
+{
+    // Check /proc for running processes
+    QDir procDir(QStringLiteral("/proc"));
+    auto pids = procDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const auto &pid : pids) {
+        QString cmdlinePath = QStringLiteral("/proc/%1/cmdline").arg(pid);
+        QFile cmdline(cmdlinePath);
+        if (cmdline.open(QIODevice::ReadOnly)) {
+            QByteArray content = cmdline.readAll();
+            // cmdline is null-separated, check if processName is in it
+            if (content.contains(processName.toUtf8())) {
+                cmdline.close();
+                return true;
+            }
+            cmdline.close();
+        }
+    }
+    return false;
+}
+
+QStringList WaylandBackend::parseIniLayout(const QString &filePath,
+                                           const QString &section,
+                                           const QString &key)
+{
+    QStringList layouts;
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return layouts;
+
+    QTextStream in(&file);
+    bool inSection = false;
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        // Skip comments and empty lines
+        if (line.isEmpty() || line.startsWith('#') || line.startsWith(';'))
+            continue;
+
+        // Check for section header
+        if (line.startsWith('[') && line.endsWith(']')) {
+            inSection = (line.mid(1, line.length() - 2) == section);
+            continue;
+        }
+
+        // If we're in the right section, look for the key
+        if (inSection) {
+            int eqPos = line.indexOf('=');
+            if (eqPos > 0) {
+                QString k = line.left(eqPos).trimmed();
+                QString v = line.mid(eqPos + 1).trimmed();
+                if (k == key) {
+                    // Split comma-separated layouts
+                    layouts = v.split(',', Qt::SkipEmptyParts);
+                    for (auto &l : layouts)
+                        l = l.trimmed().toLower();
+                    break;
+                }
+            }
+        }
+    }
+    file.close();
+    return layouts;
+}
+
 bool WaylandBackend::initLabwc()
 {
-    qInfo() << "kblayout: Labwc backend initialized (key emulation mode)";
+    qInfo() << "kblayout: Labwc backend initialized";
 
-    // For Labwc, we can only emulate the layout-switch key
-    // Mark as valid but with limited functionality
-    m_layoutSyms << QStringLiteral("us") << QStringLiteral("ru");
-    m_layoutNames << QStringLiteral("English") << QStringLiteral("Russian");
-    return true;
+    // 1. Try to read from ~/.config/labwc/environment (XKB_DEFAULT_LAYOUT)
+    QString home = QProcessEnvironment::systemEnvironment().value(QStringLiteral("HOME"));
+    QString envFile = QStringLiteral("%1/.config/labwc/environment").arg(home);
+    QString xkbLayout;
+
+    QFile env(envFile);
+    if (env.open(QIODevice::ReadOnly)) {
+        QTextStream in(&env);
+        while (!in.atEnd()) {
+            QString line = in.readLine().trimmed();
+            if (line.startsWith(QStringLiteral("XKB_DEFAULT_LAYOUT="))) {
+                xkbLayout = line.mid(21).trimmed().toLower();
+                break;
+            }
+        }
+        env.close();
+    }
+
+    // 2. Fallback: parse ~/.config/labwc/config for xkb_layout
+    if (xkbLayout.isEmpty()) {
+        QString configPath = QStringLiteral("%1/.config/labwc/config").arg(home);
+        QStringList layouts = parseIniLayout(configPath, QStringLiteral("input"), QStringLiteral("xkb_layout"));
+        if (!layouts.isEmpty()) {
+            xkbLayout = layouts.join(',');
+        }
+    }
+
+    // 3. Fallback: read from XKB rules
+    if (xkbLayout.isEmpty()) {
+        QProcess proc;
+        proc.start("setxkbmap", {"-query"});
+        proc.waitForFinished(2000);
+        if (proc.exitCode() == 0) {
+            QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
+            QRegularExpression re(QStringLiteral("^layout\\s+=\\s+(\\w+)"));
+            auto match = re.match(output);
+            if (match.hasMatch()) {
+                xkbLayout = match.captured(1).toLower();
+            }
+        }
+    }
+
+    // Populate layouts from XKB rules if we found a layout
+    if (!xkbLayout.isEmpty()) {
+        m_layoutSyms = xkbLayout.split(',', Qt::SkipEmptyParts);
+        for (const auto &sym : m_layoutSyms) {
+            m_layoutNames.append(sym.toUpper());
+        }
+        m_valid = !m_layoutSyms.isEmpty();
+        qInfo() << "kblayout: Labwc layouts:" << m_layoutSyms;
+    } else {
+        qWarning() << "kblayout: Labwc: Could not detect keyboard layout";
+        m_layoutSyms << QStringLiteral("us");
+        m_layoutNames << QStringLiteral("English");
+        m_valid = true;
+    }
+
+    return m_valid;
 }
 
 bool WaylandBackend::initWayfire()
 {
-    qInfo() << "kblayout: Wayfire backend initialized (key emulation mode)";
+    qInfo() << "kblayout: Wayfire backend initialized";
 
-    // Wayfire uses wf-shell IPC for some things, but layout switching
-    // is typically done via key emulation
-    m_layoutSyms << QStringLiteral("us") << QStringLiteral("ru");
-    m_layoutNames << QStringLiteral("English") << QStringLiteral("Russian");
-    return true;
+    // 1. Try to read from ~/.config/wayfire.ini [input] section
+    QString home = QProcessEnvironment::systemEnvironment().value(QStringLiteral("HOME"));
+    QString wayfireIni = QStringLiteral("%1/.config/wayfire.ini").arg(home);
+
+    QStringList layouts = parseIniLayout(wayfireIni, QStringLiteral("input"), QStringLiteral("xkb_layout"));
+    if (!layouts.isEmpty()) {
+        m_layoutSyms = layouts;
+        for (const auto &sym : m_layoutSyms) {
+            m_layoutNames.append(sym.toUpper());
+        }
+        m_valid = true;
+        qInfo() << "kblayout: Wayfire layouts from wayfire.ini:" << m_layoutSyms;
+    } else {
+        // 2. Fallback: read from XKB rules
+        QProcess proc;
+        proc.start("setxkbmap", {"-query"});
+        proc.waitForFinished(2000);
+        if (proc.exitCode() == 0) {
+            QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
+            QRegularExpression re(QStringLiteral("^layout\\s +=\\s+(\\w+)"));
+            auto match = re.match(output);
+            if (match.hasMatch()) {
+                m_layoutSyms = match.captured(1).toLower().split(',', Qt::SkipEmptyParts);
+                for (const auto &sym : m_layoutSyms) {
+                    m_layoutNames.append(sym.toUpper());
+                }
+                m_valid = !m_layoutSyms.isEmpty();
+            }
+        }
+
+        if (!m_valid) {
+            qWarning() << "kblayout: Wayfire: Could not detect keyboard layout";
+            m_layoutSyms << QStringLiteral("us");
+            m_layoutNames << QStringLiteral("English");
+            m_valid = true;
+        }
+    }
+
+    return m_valid;
 }
 
 bool WaylandBackend::initGeneric()
@@ -494,18 +655,44 @@ bool WaylandBackend::initGeneric()
     qWarning() << "kblayout: No supported Wayland compositor found,"
                << "using read-only fallback";
 
+    // 1. Try setxkbmap -query (works if XKB is configured)
+    QProcess proc;
+    proc.start("setxkbmap", {"-query"});
+    proc.waitForFinished(2000);
+
+    if (proc.exitCode() == 0) {
+        QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
+        QRegularExpression re(QStringLiteral("^layout\\s +=\\s+(\\w+)"));
+        auto match = re.match(output);
+        if (match.hasMatch()) {
+            m_layoutSyms = match.captured(1).toLower().split(',', Qt::SkipEmptyParts);
+            for (const auto &sym : m_layoutSyms) {
+                m_layoutNames.append(sym.toUpper());
+            }
+            m_valid = !m_layoutSyms.isEmpty();
+            qInfo() << "kblayout: Generic fallback layouts from setxkbmap:" << m_layoutSyms;
+            return m_valid;
+        }
+    }
+
+    // 2. Fallback: try XKB_DEFAULT_LAYOUT env var
+    QString xkbLayout = qEnvironmentVariable("XKB_DEFAULT_LAYOUT");
+    if (!xkbLayout.isEmpty()) {
+        m_layoutSyms = xkbLayout.toLower().split(',', Qt::SkipEmptyParts);
+        for (const auto &sym : m_layoutSyms) {
+            m_layoutNames.append(sym.toUpper());
+        }
+        m_valid = !m_layoutSyms.isEmpty();
+        qInfo() << "kblayout: Generic fallback from XKB_DEFAULT_LAYOUT:" << m_layoutSyms;
+        return m_valid;
+    }
+
+    // 3. Ultimate fallback
+    qWarning() << "kblayout: Could not detect any keyboard layout";
     m_layoutSyms << QStringLiteral("us");
     m_layoutNames << QStringLiteral("English (EN)");
-    return true;
-}
-
-// ============================================================================
-// Public API implementations
-// ============================================================================
-
-QStringList WaylandBackend::layouts() const
-{
-    return m_layoutSyms;
+    m_valid = true;
+    return m_valid;
 }
 
 int WaylandBackend::currentLayout() const
