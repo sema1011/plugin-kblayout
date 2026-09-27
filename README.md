@@ -1,7 +1,7 @@
 # LXQt Panel: Keyboard Layout Switcher Plugin
 
 Легковесный плагин для панели LXQt с переключением раскладки клавиатуры.
-Поддерживает X11 и Wayland (KWin, Sway, Hyprland).
+Поддерживает X11 и Wayland (KWin, Sway, Hyprland, Labwc, Wayfire).
 
 ## Возможности
 
@@ -23,9 +23,9 @@
 | KWin Wayland    | D-Bus `org.kde.KeyboardLayouts`   | `qdbus6` (async)                  | Полная       |
 | Sway            | `swaymsg -t get_inputs` + config  | `wtype Alt+Shift` (циклическое)   | Частичная    |
 | Hyprland        | `hyprctl -j devices`              | `hyprctl keyword xkb_layout N`    | Полная       |
-| Labwc           | — (fallback `us,ru`)              | `wtype` (эмуляция клавиши)        | Эмуляция     |
-| Wayfire         | — (fallback `us,ru`)              | `wtype` (эмуляция клавиши)        | Эмуляция     |
-| Generic         | — (fallback `us`)                 | `wtype` / `xdotool`               | Эмуляция     |
+| Labwc           | `~/.config/labwc/config` + `setxkbmap` | `wtype` (эмуляция клавиши)  | Частичная    |
+| Wayfire         | `~/.config/wayfire.ini` + `setxkbmap`  | `wtype` (эмуляция клавиши)  | Частичная    |
+| Generic         | `setxkbmap -query` + env vars     | `wtype` / `xdotool`               | Эмуляция     |
 
 ## Зависимости
 
@@ -35,7 +35,7 @@
 - `libxkbcommon`
 
 ### Опциональные
-- `libxkbcommon-x11` + `libxcb` + `libxcb-xkb` — X11 бэкенд
+- `libxkbcommon-x11` + `libxcb[xkb]` — X11 бэкенд
 - `wayland-client` — Wayland бэкенд
 - `wtype` — эмуляция клавиш на Wayland (Labwc, Wayfire, generic)
 - `qdbus6` — D-Bus CLI для KWin Wayland
@@ -82,7 +82,7 @@ sudo cp lxqt-panel/libkblayout.so /usr/lib/lxqt-panel/
 
 ### Поведение
 - **Показывать уведомления** — уведомления при смене раскладки
-- **Configure layouts...** — открывает `lxqt-config-input --show-page Keyboard Layout`
+- **Configure layouts...** — открывает `lxqt-config-input`
 
 ## Горячие клавиши
 
@@ -103,7 +103,6 @@ sudo cp lxqt-panel/libkblayout.so /usr/lib/lxqt-panel/
 - `lxqt-globalkeys` не работает на Wayland
 - Layer-shell surface получает keymap только в фокусе
 - На Sway переключение циклическое (через эмуляцию клавиш)
-- На Labwc/Wayfire нет чтения текущей раскладки
 - LED-индикаторы (Caps/Num/Scroll) читаются из `/sys/class/leds/*/brightness`
 
 ### X11
@@ -121,7 +120,7 @@ plugin-kblayout/
 │   ├── kblayout.h/cpp          # Главный плагин
 │   ├── kblayoutbackend.h/cpp   # Абстрактный бэкенд
 │   ├── x11backend.h/cpp        # X11: libxkbcommon-x11 + XCB
-│   ├── waylandbackend.h/cpp    # Wayland: KWin/Sway/Hyprland
+│   ├── waylandbackend.h/cpp    # Wayland: KWin/Sway/Hyprland/Labwc/Wayfire
 │   ├── kblayoutwidget.h/cpp    # Виджет на панели
 │   ├── kblayoutsettings.h/cpp  # Хранение настроек
 │   └── kblayoutsettingsdialog.h/cpp  # Диалог настроек
