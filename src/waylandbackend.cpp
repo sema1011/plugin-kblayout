@@ -696,6 +696,11 @@ bool WaylandBackend::initGeneric()
     return m_valid;
 }
 
+QStringList WaylandBackend::layouts() const
+{
+    return m_layoutSyms;
+}
+
 int WaylandBackend::currentLayout() const
 {
     if (m_compositor == QLatin1String("kwin")) {
