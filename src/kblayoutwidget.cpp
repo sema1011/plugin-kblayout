@@ -201,10 +201,9 @@ void KbLayoutWidget::updateDisplay()
 
         // Try to load flag icon (same as kbindicator)
         QIcon layoutIcon;
-        if (!m_flagPattern.isEmpty()) {
-            QString flagFile = m_flagPattern.replace(
-                QStringLiteral("%1"), m_layoutSyms[m_currentIdx].toLower());
-            qDebug() << "kblayout: flagPattern=" << m_flagPattern << "flagFile=" << flagFile << "exists=" << QFile::exists(flagFile);
+        if (!m_flagPattern.isEmpty() && m_flagPattern.contains(QStringLiteral("%1"))) {
+            QString flagFile = m_flagPattern.arg(m_layoutSyms[m_currentIdx].toLower());
+            qDebug() << "kblayout: flagFile=" << flagFile << "exists=" << QFile::exists(flagFile);
             if (QFile::exists(flagFile)) {
                 layoutIcon = QIcon(flagFile);
                 // Verify icon produces a pixmap (use fixed size since iconSize() is 0,0 by default)
