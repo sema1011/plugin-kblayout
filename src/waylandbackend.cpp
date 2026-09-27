@@ -137,17 +137,8 @@ bool WaylandBackend::initKWin()
         if (reply.isValid())
             m_currentLayoutIndex = reply.value();
 
-        // Start async read — m_valid will be set in _on_kwin_layouts_reply
-        readKWinLayouts();
-
-        // If sync read already populated layouts, we're good
-        if (!m_layoutSyms.isEmpty()) {
-            m_valid = true;
-            qInfo() << "kblayout: KWin backend initialized,"
-                    << m_layoutSyms.size() << "layouts found";
-        } else {
-            qInfo() << "kblayout: KWin waiting for D-Bus reply...";
-        }
+        // Synchronous read via D-Bus — ensures we have layouts before init returns
+        readKWinLayoutsSync();
 
         // Start LED state polling timer
         m_ledPollTimer = new QTimer(this);
@@ -155,6 +146,9 @@ bool WaylandBackend::initKWin()
         connect(m_ledPollTimer, &QTimer::timeout,
                 this, &WaylandBackend::_on_led_poll_timer);
         m_ledPollTimer->start();
+
+        // Start async refresh for full layout names (qdbus6 --literal)
+        readKWinLayouts();
     }
 
     // Fallback: try org.freedesktop.Implementations.Keyboards
@@ -198,10 +192,10 @@ bool WaylandBackend::initKWin()
         }
     }
 
-    // Final fallback: try kxkbrc
+    // Final fallback: try kxkbrc synchronously
     if (!m_valid) {
         qWarning() << "kblayout: D-Bus returned 0 layouts, trying kxkbrc fallback";
-        readKXkbConfig();
+        readKXkbConfigSync();
         m_valid = !m_layoutSyms.isEmpty();
     }
 
@@ -216,13 +210,14 @@ bool WaylandBackend::initKWin()
 
 void WaylandBackend::readKWinLayouts()
 {
-    // Async: use qdbus6 command to avoid blocking the main thread
+    // Async: use qdbus6 command to refresh layout names (non-blocking).
+    // Only called after init (via _on_kwin_layoutChanged).
+    if (!m_kwinLayouts || !m_kwinLayouts->isValid())
+        return;
+
     if (m_asyncProcess)
         delete m_asyncProcess;
     m_asyncProcess = new QProcess(this);
-
-    m_layoutSyms.clear();
-    m_layoutNames.clear();
 
     m_asyncProcess->start("qdbus6", {
         "--literal",
@@ -232,6 +227,45 @@ void WaylandBackend::readKWinLayouts()
 
     connect(m_asyncProcess, &QProcess::finished,
             this, &WaylandBackend::onKWinLayoutsFinished);
+}
+
+void WaylandBackend::readKWinLayoutsSync()
+{
+    // Synchronous D-Bus call — used during init to ensure we have layouts
+    // before the backend is returned to the caller.
+    if (!m_kwinLayouts || !m_kwinLayouts->isValid())
+        return;
+
+    m_layoutSyms.clear();
+    m_layoutNames.clear();
+
+    // Call getLayoutsList synchronously via D-Bus
+    QDBusReply<QVariant> reply =
+        m_kwinLayouts->call(QStringLiteral("getLayoutsList"));
+
+    if (reply.isValid()) {
+        // D-Bus returns a nested variant: Argument: a(sss) {...}
+        // Strip "Argument: " prefix and parse as JSON-like
+        QVariant variant = reply.value();
+        QString str = variant.toString();
+
+        // Parse: Argument: a(sss) {[Argument: (sss) "us", "", "English (US)"], ...}
+        // Extract all "sym", "", "Display Name" triplets
+        QRegularExpression re("\"(\\w+)\",\\s*\"([^\"]*)\",\\s*\"([^\"]*)\"");
+        QRegularExpressionMatchIterator it = re.globalMatch(str);
+
+        while (it.hasNext()) {
+            QRegularExpressionMatch match = it.next();
+            QString sym = match.captured(1);
+            QString displayName = match.captured(3);
+            if (!sym.isEmpty()) {
+                m_layoutSyms.append(sym);
+                m_layoutNames.append(displayName.isEmpty() ? sym.toUpper() : displayName);
+            }
+        }
+    }
+
+    m_valid = !m_layoutSyms.isEmpty();
 }
 
 void WaylandBackend::onKWinLayoutsFinished()
@@ -268,13 +302,11 @@ void WaylandBackend::onKWinLayoutsFinished()
 
 void WaylandBackend::readKXkbConfig()
 {
-    // Async: use kreadconfig6 to read layout list from kxkbrc
+    // Async: use kreadconfig6 to read layout list from kxkbrc (non-blocking).
+    // Only called after init (via _on_kwin_layoutChanged).
     if (m_asyncProcess)
         delete m_asyncProcess;
     m_asyncProcess = new QProcess(this);
-
-    m_layoutSyms.clear();
-    m_layoutNames.clear();
 
     m_asyncProcess->start("kreadconfig6", {
         "--file", "kxkbrc",
@@ -284,6 +316,39 @@ void WaylandBackend::readKXkbConfig()
 
     connect(m_asyncProcess, &QProcess::finished,
             this, &WaylandBackend::onKXkbConfigFinished);
+}
+
+void WaylandBackend::readKXkbConfigSync()
+{
+    // Synchronous read of kxkbrc — used during init fallback.
+    QProcess proc;
+    proc.start("kreadconfig6", {
+        "--file", "kxkbrc",
+        "--group", "Layout",
+        "--key", "LayoutList"
+    });
+    proc.waitForFinished(Kblayout::ProcessTimeoutMs);
+
+    if (proc.exitCode() == 0) {
+        QString layout = QString::fromUtf8(
+            proc.readAllStandardOutput()).trimmed();
+
+        if (layout.isEmpty()) {
+            qWarning() << "kblayout: kreadconfig6 returned empty";
+            return;
+        }
+
+        // Parse comma-separated layout list (e.g. "us,ru,de")
+        const auto parts = layout.split(',', Qt::SkipEmptyParts);
+
+        for (const auto &sym : parts) {
+            m_layoutSyms.append(sym.trimmed().toLower());
+            m_layoutNames.append(sym.trimmed().toUpper());
+        }
+    } else {
+        qWarning() << "kblayout: kreadconfig6 failed with exit code"
+                    << proc.exitCode();
+    }
 }
 
 void WaylandBackend::onKXkbConfigFinished()

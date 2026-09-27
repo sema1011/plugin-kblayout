@@ -82,7 +82,9 @@ private:
      */
     bool initKWin();
     void readKWinLayouts();
+    void readKWinLayoutsSync();
     void readKXkbConfig();
+    void readKXkbConfigSync();
 
     /**
      * \brief Sway via swaymsg JSON IPC.
