@@ -134,8 +134,10 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/translations/kblayout.ts")
     find_package(Qt6LinguistTools)
     if(Qt6LinguistTools_FOUND)
         qt_add_translation(QM_FILES "${CMAKE_SOURCE_DIR}/translations/kblayout.ts")
-        install(FILES ${QM_FILES}
-            DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/lxqt-panel/translations"
-        )
+        if(QM_FILES)
+            install(FILES ${QM_FILES}
+                DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/lxqt-panel/translations"
+            )
+        endif()
     endif()
 endif()
