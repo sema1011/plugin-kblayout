@@ -187,9 +187,6 @@ void KbLayoutWidget::onLayoutChanged(int layoutIndex)
 void KbLayoutWidget::updateDisplay()
 {
     if (!m_layoutSyms.isEmpty() && m_currentIdx >= 0 && m_currentIdx < m_layoutSyms.size()) {
-        QString display = m_layoutNames.isEmpty()
-                ? m_layoutSyms[m_currentIdx].toUpper()
-                : m_layoutNames[m_currentIdx];
 
         // Try to load flag icon (same as kbindicator)
         QIcon layoutIcon;
