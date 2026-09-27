@@ -26,15 +26,11 @@
 #include "kblayoutbackend.h"
 
 #include <QToolButton>
-#include <QMenu>
 #include <QMouseEvent>
 #include <QFont>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QLabel>
-#include <QAction>
-#include <QScreen>
-#include <QGuiApplication>
 #include <QFile>
 #include <lxqt/ilxqtpanel.h>
 
@@ -49,11 +45,8 @@ KbLayoutWidget::KbLayoutWidget(QWidget *parent) :
 
     // Layout button
     m_button = new QToolButton(this);
-    m_button->setPopupMode(QToolButton::InstantPopup);
     m_button->setToolButtonStyle(Qt::ToolButtonTextOnly);
     m_button->setFont(QFont(QStringLiteral("Sans"), m_fontSize, QFont::Bold));
-    m_menu = new QMenu(this);
-    m_button->setMenu(m_menu);
     mainLayout->addWidget(m_button);
 
     // LED indicators (initially hidden)
@@ -220,7 +213,7 @@ void KbLayoutWidget::updateDisplay()
             m_button->setText(m_layoutSyms[m_currentIdx].toUpper());
         }
 
-        // Tooltip: full layout info + controls
+        // Tooltip: full layout info
         QString tooltip;
         if (!m_layoutNames.isEmpty() && m_currentIdx < m_layoutNames.size()) {
             tooltip = QStringLiteral("%1 (%2)")
@@ -229,88 +222,24 @@ void KbLayoutWidget::updateDisplay()
         } else {
             tooltip = m_layoutSyms[m_currentIdx].toUpper();
         }
-        tooltip += QStringLiteral("\n---\n") + tr("Left click: next layout")
-                   + QStringLiteral("\n") + tr("Right click: select layout");
         m_button->setToolTip(tooltip);
     } else {
         m_button->setText(tr("??"));
         m_button->setToolTip(tr("No keyboard layouts available"));
     }
-
-    buildContextMenu();
 }
 
 void KbLayoutWidget::mousePressEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton) {
-        emit layoutNextRequested();
-    }
+    // Both left and right click switch to next layout
+    emit layoutNextRequested();
     QWidget::mousePressEvent(event);
-}
-
-void KbLayoutWidget::contextMenuEvent(QContextMenuEvent *event)
-{
-    buildContextMenu();
-
-    // Use panel's popup positioning if available (Wayland compatibility)
-    QPoint pos = popupPosition();
-    m_menu->exec(pos);
-}
-
-QPoint KbLayoutWidget::popupPosition()
-{
-    // Try panel's calculatePopupWindowPos first (proper Wayland support)
-    if (m_panel) {
-        QRect rect = m_panel->calculatePopupWindowPos(
-            geometry().bottomRight(), m_menu->sizeHint());
-        return rect.topLeft();
-    }
-
-    // Fallback: show below the widget
-    return mapToGlobal(QPoint(0, height()));
 }
 
 void KbLayoutWidget::buildContextMenu()
 {
-    m_menu->clear();
-
-    // "Next Layout" action
-    QAction *nextAction = m_menu->addAction(tr("Next Layout"));
-    nextAction->setShortcut(QKeyCombination(Qt::CTRL, Qt::Key_Space));
-    connect(nextAction, &QAction::triggered, this, [this]() {
-        emit layoutNextRequested();
-    });
-
-    // Separator
-    m_menu->addSeparator();
-
-    // Individual layout actions
-    for (int i = 0; i < m_layoutSyms.size(); ++i) {
-        QString label = m_layoutNames.isEmpty()
-                ? m_layoutSyms[i].toUpper()
-                : QStringLiteral("%1 (%2)").arg(m_layoutNames[i]).arg(m_layoutSyms[i].toUpper());
-
-        QAction *action = m_menu->addAction(label);
-
-        // Mark current layout
-        if (i == m_currentIdx) {
-            action->setCheckable(true);
-            action->setChecked(true);
-        }
-
-        int idx = i;
-        connect(action, &QAction::triggered, this, [this, idx]() {
-            emit layoutSelected(idx);
-        });
-    }
-
-    if (!m_layoutSyms.isEmpty()) {
-        m_menu->addSeparator();
-    }
-
-    // "Configure..." action
-    QAction *configAction = m_menu->addAction(tr("Configure..."));
-    connect(configAction, &QAction::triggered, this, [this]() {
-        emit configureRequested();
-    });
+    // No longer used - context menu removed
+    Q_UNUSED(m_layoutSyms)
+    Q_UNUSED(m_layoutNames)
+    Q_UNUSED(m_currentIdx)
 }
