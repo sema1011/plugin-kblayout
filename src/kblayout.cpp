@@ -28,6 +28,11 @@
 #include "kblayoutwidget.h"
 #include "kblayoutsettingsdialog.h"
 
+#include <QTranslator>
+#include <QApplication>
+#include <QLocale>
+#include <QDir>
+
 #ifdef KBLAYOUT_X11
 #include "x11backend.h"
 #endif
@@ -53,6 +58,16 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
     ILXQtPanelPlugin(startupInfo),
     m_widget()
 {
+    // Install translator for plugin localization
+    m_translator = new QTranslator(this);
+    QString locale = QLocale::system().name();  // e.g. "ru_RU", "en_US"
+    QString translationPath = LXQT_SHARE_DIR "/translations/";
+    
+    // Try locale-specific translation (e.g. ru_RU -> ru.ts)
+    QString tsFile = locale.split('_').first() + QStringLiteral(".ts");  // "ru"
+    if (m_translator->load(tsFile, translationPath)) {
+        QApplication::installTranslator(m_translator);
+    }
     m_settings.init(settings());
 
     // Set panel reference for popup positioning

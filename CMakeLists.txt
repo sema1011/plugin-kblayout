@@ -141,3 +141,40 @@ install(FILES resources/kblayout.desktop.in
     RENAME kblayout.desktop
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/lxqt-panel"
 )
+
+# Auto-compile all .ts files to .qm files for translations
+file(GLOB TRANSLATION_TS_FILES "${CMAKE_SOURCE_DIR}/translations/*.ts")
+set(TRANSLATION_QM_FILES "")
+foreach(ts_file ${TRANSLATION_TS_FILES})
+    get_filename_component(ts_name ${ts_file} NAME_WE)  # e.g. "ru" from "ru.ts"
+    
+    # Skip template files (they are just examples, not real translations)
+    if(ts_name STREQUAL "template")
+        continue()
+    endif()
+    
+    set(qm_file "${CMAKE_BINARY_DIR}/translations/${ts_name}.qm")
+    list(APPEND TRANSLATION_QM_FILES ${qm_file})
+    
+    add_custom_command(
+        OUTPUT ${qm_file}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/translations
+        COMMAND lrelease ${ts_file} -qm ${qm_file}
+        DEPENDS ${ts_file}
+        COMMENT "Compiling translation: ${ts_name}.ts -> ${ts_name}.qm"
+    )
+endforeach()
+
+# Create a target to build all translations
+add_custom_target(translations ALL DEPENDS ${TRANSLATION_QM_FILES})
+
+# Install compiled .qm files
+install(FILES ${TRANSLATION_QM_FILES}
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/translations"
+)
+
+# Install translations
+install(FILES translations/ru.ts
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/translations"
+)
+

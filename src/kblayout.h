@@ -35,6 +35,7 @@
 #endif
 
 class QDialog;
+class QTranslator;
 
 /**
  * \brief Main LXQt panel plugin for keyboard layout switching.
@@ -81,6 +82,7 @@ private:
     KbLayoutSettings m_settings;
     KbLayoutBackend *m_backend{nullptr};
     KbLayoutWidget  m_widget;
+    QTranslator *m_translator{nullptr};
 #ifdef KBLAYOUT_X11
     KbLayoutKeeper *m_keeper{nullptr};
 #endif
