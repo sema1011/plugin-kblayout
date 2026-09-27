@@ -73,6 +73,7 @@ private:
     void readState();
     void readLedState();
     void readKbdInfo();
+    void emitInitialLedState() override;
 
     bool m_valid{false};
     void *m_context{nullptr};

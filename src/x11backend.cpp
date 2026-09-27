@@ -314,3 +314,8 @@ void X11Backend::readLedState()
 
     emit ledStateChanged(caps, num, scroll);
 }
+
+void X11Backend::emitInitialLedState()
+{
+    readLedState();
+}
