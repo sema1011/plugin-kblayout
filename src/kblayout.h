@@ -29,7 +29,10 @@
 #include "kblayoutwidget.h"
 #include "kblayoutbackend.h"
 #include "kblayoutsettings.h"
+
+#ifdef KBLAYOUT_X11
 #include "kbdkeeper.h"
+#endif
 
 class QDialog;
 
@@ -78,7 +81,9 @@ private:
     KbLayoutSettings m_settings;
     KbLayoutBackend *m_backend{nullptr};
     KbLayoutWidget  m_widget;
+#ifdef KBLAYOUT_X11
     KbLayoutKeeper *m_keeper{nullptr};
+#endif
     int m_lastLayoutIdx{-1}; // Track changes for notifications
 };
 

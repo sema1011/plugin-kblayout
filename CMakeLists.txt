@@ -49,7 +49,6 @@ set(SOURCES
     src/kblayoutbackend.cpp
     src/kblayoutsettings.cpp
     src/kblayoutsettingsdialog.cpp
-    src/kbdkeeper.cpp
 )
 
 set(UI_FILES
@@ -87,6 +86,7 @@ if(_enable_x11)
     # XKBCommon::X11 provides libxkbcommon-x11, but we also need libxcb-xkb
     # for xcb_xkb_latch_lock_state()
     find_package(XCB REQUIRED COMPONENTS XKB)
+    list(APPEND SOURCES src/kbdkeeper.cpp)
     list(APPEND LIBRARIES ${XCB_XKB_LIBRARIES} XKBCommon::X11 KF6::WindowSystem)
     add_definitions(-DKBLAYOUT_X11)
 else()
