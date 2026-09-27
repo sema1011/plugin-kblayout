@@ -71,6 +71,7 @@ void KbLayoutSettingsDialog::loadSettings()
     ui->chkShowCaps->setChecked(m_settings->showCaps());
     ui->chkShowNum->setChecked(m_settings->showNum());
     ui->chkShowScroll->setChecked(m_settings->showScroll());
+    ui->chkShowFlags->setChecked(m_settings->showFlags());
     ui->txtFlagPattern->setText(m_settings->flagPattern());
     ui->spinFontSize->setValue(m_settings->fontSize());
     ui->chkNotification->setChecked(m_settings->showNotification());
@@ -85,6 +86,7 @@ void KbLayoutSettingsDialog::saveSettings()
     m_settings->setShowCaps(ui->chkShowCaps->isChecked());
     m_settings->setShowNum(ui->chkShowNum->isChecked());
     m_settings->setShowScroll(ui->chkShowScroll->isChecked());
+    m_settings->setShowFlags(ui->chkShowFlags->isChecked());
     m_settings->setFlagPattern(ui->txtFlagPattern->text());
     m_settings->setFontSize(ui->spinFontSize->value());
     m_settings->setShowNotification(ui->chkNotification->isChecked());

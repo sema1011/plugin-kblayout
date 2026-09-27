@@ -52,6 +52,7 @@ public:
     bool showNum() const;
     bool showScroll() const;
     int fontSize() const;
+    bool showFlags() const;
     QString flagPattern() const;
 
     // Behavior options
@@ -63,6 +64,7 @@ public:
     void setShowNum(bool show);
     void setShowScroll(bool show);
     void setFontSize(int size);
+    void setShowFlags(bool show);
     void setFlagPattern(const QString &pattern);
     void setShowNotification(bool show);
 

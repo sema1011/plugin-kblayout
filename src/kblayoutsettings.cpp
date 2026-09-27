@@ -70,6 +70,12 @@ QString KbLayoutSettings::flagPattern() const
     return m_settings->value(QStringLiteral("flagPattern"), QString()).toString();
 }
 
+bool KbLayoutSettings::showFlags() const
+{
+    if (!m_settings) return true;
+    return m_settings->value(QStringLiteral("showFlags"), true).toBool();
+}
+
 bool KbLayoutSettings::showNotification() const
 {
     if (!m_settings) return true;
@@ -110,6 +116,12 @@ void KbLayoutSettings::setFlagPattern(const QString &pattern)
 {
     if (m_settings)
         m_settings->setValue(QStringLiteral("flagPattern"), pattern);
+}
+
+void KbLayoutSettings::setShowFlags(bool show)
+{
+    if (m_settings)
+        m_settings->setValue(QStringLiteral("showFlags"), show);
 }
 
 void KbLayoutSettings::setShowNotification(bool show)

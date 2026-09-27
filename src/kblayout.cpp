@@ -197,6 +197,7 @@ void KbLayout::settingsChanged()
     m_widget.setShowCaps(m_settings.showCaps());
     m_widget.setShowNum(m_settings.showNum());
     m_widget.setShowScroll(m_settings.showScroll());
+    m_widget.setShowFlags(m_settings.showFlags());
     m_widget.setFontSize(m_settings.fontSize());
     m_widget.setFlagPattern(m_settings.flagPattern());
 

@@ -98,6 +98,11 @@ public:
      */
     void setFlagPattern(const QString &pattern);
 
+    /**
+     * \brief Enable or disable flag icons.
+     */
+    void setShowFlags(bool show);
+
 public slots:
     /**
      * \brief Update display when layout changes.
@@ -142,6 +147,7 @@ private:
     bool m_showScroll{false};
     int m_fontSize{9};
     QString m_flagPattern;
+    bool m_showFlags{true};
 
     // LED indicators
     QLabel *m_capsLabel{nullptr};
