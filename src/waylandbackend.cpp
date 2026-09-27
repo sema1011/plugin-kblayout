@@ -130,7 +130,7 @@ bool WaylandBackend::initKWin()
     readKWinLayouts();
     m_valid = !m_layoutSyms.isEmpty();
     if (!m_valid) {
-        // Fallback: read from kxkbrc config
+        qWarning() << "kblayout: KWin D-Bus returned 0 layouts, trying kxkbrc fallback";
         readKXkbConfig();
         m_valid = !m_layoutSyms.isEmpty();
     }
@@ -168,15 +168,21 @@ void WaylandBackend::readKXkbConfig()
     QString configPath = QStandardPaths::locate(
         QStandardPaths::ConfigLocation,
         QStringLiteral("kxkbrc"));
-    if (configPath.isEmpty())
+    if (configPath.isEmpty()) {
+        qWarning() << "kblayout: kxkbrc not found";
         return;
+    }
+    qDebug() << "kblayout: Reading kxkbrc from" << configPath;
 
     QSettings settings(configPath, QSettings::IniFormat);
     settings.beginGroup(QStringLiteral("Layout"));
 
     QString layout = settings.value(QStringLiteral("LayoutList")).toString();
-    if (layout.isEmpty())
+    qDebug() << "kblayout: kxkbrc LayoutList =" << layout;
+    if (layout.isEmpty()) {
+        qWarning() << "kblayout: kxkbrc LayoutList is empty";
         return;
+    }
 
     // Parse comma-separated layout list (e.g. "us,ru,de")
     const auto parts = layout.split(',', Qt::SkipEmptyParts);
@@ -201,6 +207,7 @@ void WaylandBackend::readKXkbConfig()
     }
 
     settings.endGroup();
+    qDebug() << "kblayout: kxkbrc found" << m_layoutSyms.size() << "layouts:" << m_layoutSyms;
 }
 
 // ============================================================================
