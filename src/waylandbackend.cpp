@@ -243,41 +243,32 @@ void WaylandBackend::readKWinLayouts()
 
 void WaylandBackend::readKWinLayoutsSync()
 {
-    // Synchronous D-Bus call — used during init to ensure we have layouts
-    // before the backend is returned to the caller.
-    if (!m_kwinLayouts || !m_kwinLayouts->isValid())
-        return;
+    // Synchronous read via qdbus6 --literal — the most reliable way
+    // to get a(sss) layouts from KWin D-Bus.
+    // QDBusMessage can't deserialize a(sss) into QVariant automatically.
+    QProcess proc;
+    proc.start("qdbus6", {
+        "--literal",
+        "org.kde.KWin", "/Layouts",
+        "org.kde.KeyboardLayouts.getLayoutsList"
+    });
+    proc.waitForFinished(Kblayout::ProcessTimeoutMs);
 
-    m_layoutSyms.clear();
-    m_layoutNames.clear();
+    if (proc.exitCode() == 0) {
+        QByteArray output = proc.readAllStandardOutput();
+        QString outputStr = QString::fromUtf8(output).trimmed();
+        // Parse: [Argument: a(sss) {[Argument: (sss) "us", "", "English (US)"], ...}]
+        // Extract all "sym", "", "Display Name" triplets
+        QRegularExpression re("\"(\\w+)\",\\s*\"([^\"]*)\",\\s*\"([^\"]*)\"");
+        QRegularExpressionMatchIterator it = re.globalMatch(outputStr);
 
-    // Call getLayoutsList synchronously via D-Bus
-    // Returns a(sss) — array of (symbol, variant, display_name)
-    QDBusMessage msg = QDBusMessage::createMethodCall(
-        QStringLiteral("org.kde.KWin"),
-        QStringLiteral("/Layouts"),
-        QStringLiteral("org.kde.KeyboardLayouts"),
-        QStringLiteral("getLayoutsList"));
-
-    QDBusMessage reply =
-        QDBusConnection::sessionBus().call(msg,
-                                           QDBus::Block,
-                                           Kblayout::ProcessTimeoutMs);
-
-    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
-        // arg(0) is the a(sss) array
-        QVariant variant = reply.arguments().at(0);
-        QVariantList layouts = variant.toList();
-
-        for (const auto &layout : layouts) {
-            QVariantList tuple = layout.toList();
-            if (tuple.size() >= 3) {
-                QString sym = tuple[0].toString();
-                QString displayName = tuple[2].toString();
-                if (!sym.isEmpty()) {
-                    m_layoutSyms.append(sym);
-                    m_layoutNames.append(displayName.isEmpty() ? sym.toUpper() : displayName);
-                }
+        while (it.hasNext()) {
+            QRegularExpressionMatch match = it.next();
+            QString sym = match.captured(1);
+            QString displayName = match.captured(3);
+            if (!sym.isEmpty()) {
+                m_layoutSyms.append(sym);
+                m_layoutNames.append(displayName.isEmpty() ? sym.toUpper() : displayName);
             }
         }
     }
