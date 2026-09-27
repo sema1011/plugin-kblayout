@@ -23,13 +23,63 @@
  * END_COMMON_COPYRIGHT_HEADER */
 
 #include "kbdkeeper.h"
+#include "kblayout-config.h"
 
-// Avoid conflict with C++ keyword 'explicit' in xcb/xkb.h
+// xcb/xkb.h uses 'explicit' as a C struct field name (xcb_xkb_set_explicit_t),
+// which conflicts with the C++ keyword. Redefine it only during header inclusion.
+#ifdef explicit
+#undef explicit
+#endif
 #define explicit _explicit
 #include <xcb/xkb.h>
+#undef explicit
 #include <xcb/xproto.h>
 #include <xcb/xfixes.h>
-#undef explicit
+
+// ============================================================================
+// Helper: Read WM_CLASS property from X11 window
+// ============================================================================
+
+static QString readWmClassName(xcb_connection_t *conn, xcb_window_t window)
+{
+    // WM_CLASS is a STRING property containing two null-terminated strings:
+    // instance_name\0class_name\0. We use class_name for identification.
+    xcb_get_property_cookie_t cookie = xcb_get_property(
+        conn,
+        false,      // delete
+        window,
+        XCB_ATOM_WM_CLASS,
+        XCB_ATOM_STRING,
+        0,          // offset
+        Kblayout::MaxPropertyLength);
+
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(conn, cookie, nullptr);
+    if (!reply)
+        return QString();
+
+    QString result;
+    if (reply->value_len > 0) {
+        char *value = static_cast<char*>(xcb_get_property_value(reply));
+        if (value) {
+            // WM_CLASS contains "instance\0class\0", we use class (second part)
+            // Find the second null terminator
+            char *null1 = strchr(value, '\0');
+            if (null1) {
+                char *null2 = strchr(null1 + 1, '\0');
+                if (null2) {
+                    // Extract class name (between first and second null)
+                    int len = null2 - (null1 + 1);
+                    result = QString::fromUtf8(null1 + 1, len);
+                } else {
+                    result = QString::fromUtf8(null1 + 1);
+                }
+            }
+        }
+    }
+
+    free(reply);
+    return result;
+}
 
 KbLayoutKeeper::KbLayoutKeeper(xcb_connection_t *conn, int deviceId, KeeperType type) :
     m_conn(conn),
@@ -37,7 +87,7 @@ KbLayoutKeeper::KbLayoutKeeper(xcb_connection_t *conn, int deviceId, KeeperType 
     m_type(type)
 {
     m_timer = new QTimer(this);
-    m_timer->setInterval(500); // Check every 500ms
+    m_timer->setInterval(Kblayout::TimerCheckIntervalMs);
     connect(m_timer, &QTimer::timeout, this, &KbLayoutKeeper::checkState);
 }
 
@@ -49,8 +99,11 @@ bool KbLayoutKeeper::setup()
 
 void KbLayoutKeeper::switchToNext()
 {
-    // Cycle to next group
-    switchToGroup((m_currentGroup + 1) % 4); // Assume max 4 groups
+    // Cycle to next group using dynamic group count
+    uint numGrps = numGroups();
+    if (numGrps == 0)
+        numGrps = Kblayout::DefaultMaxGroups;  // Fallback if not set
+    switchToGroup((m_currentGroup + 1) % numGrps);
 }
 
 void KbLayoutKeeper::switchToGroup(uint group)
@@ -72,17 +125,6 @@ void KbLayoutKeeper::switchToGroup(uint group)
         return;
     }
 
-    m_currentGroup = group;
-    emit changed();
-}
-
-void KbLayoutKeeper::keyboardChanged()
-{
-    // Reset mapping on keyboard change (override in subclasses)
-}
-
-void KbLayoutKeeper::layoutChanged(uint group)
-{
     m_currentGroup = group;
     emit changed();
 }
@@ -189,7 +231,7 @@ void AppKbdKeeper::layoutChanged(uint group)
 
 void AppKbdKeeper::checkState()
 {
-    // Get active window and its class
+    // Get active window
     xcb_window_t focus;
     int revert;
     xcb_get_input_focus_reply_t *reply = xcb_get_input_focus_reply(
@@ -200,11 +242,10 @@ void AppKbdKeeper::checkState()
     if (reply) {
         xcb_window_t newFocus = reply->focus;
         if (newFocus != XCB_NONE && newFocus != XCB_WINDOW_NONE) {
-            // Get window class (simplified - would need WM_CLASS property)
-            // For now, use window ID as proxy
-            QString className = QStringLiteral("win_%1").arg(newFocus, 0, 16);
+            // Read WM_CLASS property from the focused window
+            QString className = readWmClassName(m_conn, newFocus);
 
-            if (className != m_activeClass) {
+            if (!className.isEmpty() && className != m_activeClass) {
                 m_activeClass = className;
 
                 // Restore layout for this app

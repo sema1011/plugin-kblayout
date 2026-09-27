@@ -11,3 +11,4 @@ Makefile
 CMakeFiles/
 kblayout_autogen/
 .qt/
+TODO.md

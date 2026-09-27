@@ -26,6 +26,10 @@
 #define WAYLANDBACKEND_H
 
 #include "kblayoutbackend.h"
+#include "kblayout-config.h"
+
+#include <QProcess>
+#include <QPointer>
 
 class QDBusInterface;
 class QTimer;
@@ -135,14 +139,14 @@ private:
     QString m_activeLayoutName;
 
     /**
-     * \brief Current layout index (for polling-based compositors).
+     * \brief Current layout index (unified: D-Bus signal + polling).
      */
-    int m_currentIdx{0};
+    int m_currentLayoutIndex{0};
 
     /**
      * \brief Polling interval in milliseconds.
      */
-    int m_pollInterval{2000};
+    int m_pollInterval{Kblayout::PollIntervalMs};
 
     /**
      * \brief Cached LED states.
@@ -177,6 +181,38 @@ private slots:
      */
     void emitInitialLedState();
 
+    /**
+     * \brief Read LED state from a sysfs brightness file.
+     * \param path Path to the brightness file (e.g. /sys/class/leds/input0::capslock/brightness)
+     * \return true if LED is on, false otherwise. Returns false if file doesn't exist or can't be read.
+     */
+    bool readLedStateFromFile(const QString &path);
+
+    /**
+     * \brief Async slot: handle qdbus6 output for KWin layouts.
+     */
+    void onKWinLayoutsFinished();
+
+    /**
+     * \brief Async slot: handle kreadconfig6 output for KWin config.
+     */
+    void onKXkbConfigFinished();
+
+    /**
+     * \brief Async slot: handle swaymsg output for Sway layouts.
+     */
+    void onSwayLayoutsFinished();
+
+    /**
+     * \brief Async slot: handle hyprctl output for Hyprland layouts.
+     */
+    void onHyprlandLayoutsFinished();
+
+    /**
+     * \brief Async slot: handle qdbus6/hyprctl output for setLayout.
+     */
+    void onSetLayoutFinished();
+
 private:
     bool m_valid{false};
     QString m_compositor;
@@ -187,9 +223,20 @@ private:
     QDBusInterface *m_kwinLayouts{nullptr};
 
     /**
-     * \brief Cached current layout index (from D-Bus signal).
+     * \brief Async process holder for non-blocking IPC.
      */
-    int m_cachedLayoutIdx{0};
+    QProcess *m_asyncProcess{nullptr};
+
+    /**
+     * \brief Generation counter to prevent race conditions on rapid setLayout() calls.
+     * Each new setLayout() increments the counter; the slot verifies it matches.
+     */
+    int m_asyncProcessGen{0};
+
+    /**
+     * \brief Target layout index for async setLayout.
+     */
+    int m_asyncSetLayoutTarget{-1};
 };
 
 #endif // WAYLANDBACKEND_H

@@ -23,6 +23,7 @@
  * END_COMMON_COPYRIGHT_HEADER */
 
 #include "waylandbackend.h"
+#include "kblayout-config.h"
 
 #include <QDBusConnection>
 #include <QDBusInterface>
@@ -51,10 +52,8 @@ WaylandBackend::WaylandBackend(QObject *parent) :
 
 WaylandBackend::~WaylandBackend()
 {
-    if (m_kwinLayouts)
-        delete m_kwinLayouts;
-    if (m_pollTimer)
-        delete m_pollTimer;
+    // m_kwinLayouts and m_pollTimer are children of this object,
+    // so Qt's parent-child mechanism will automatically delete them.
 }
 
 bool WaylandBackend::init()
@@ -136,7 +135,7 @@ bool WaylandBackend::initKWin()
         // Initialize cached layout index from D-Bus
         QDBusReply<int> reply = m_kwinLayouts->call(QStringLiteral("getLayout"));
         if (reply.isValid())
-            m_cachedLayoutIdx = reply.value();
+            m_currentLayoutIndex = reply.value();
 
         // Start async read — m_valid will be set in _on_kwin_layouts_reply
         readKWinLayouts();
@@ -152,7 +151,7 @@ bool WaylandBackend::initKWin()
 
         // Start LED state polling timer
         m_ledPollTimer = new QTimer(this);
-        m_ledPollTimer->setInterval(500);  // Poll every 500ms
+        m_ledPollTimer->setInterval(Kblayout::LedPollIntervalMs);
         connect(m_ledPollTimer, &QTimer::timeout,
                 this, &WaylandBackend::_on_led_poll_timer);
         m_ledPollTimer->start();
@@ -217,17 +216,31 @@ bool WaylandBackend::initKWin()
 
 void WaylandBackend::readKWinLayouts()
 {
-    // Use qdbus6 command to avoid blocking the main thread
-    QProcess process;
-    process.start("qdbus6", {
+    // Async: use qdbus6 command to avoid blocking the main thread
+    if (m_asyncProcess)
+        delete m_asyncProcess;
+    m_asyncProcess = new QProcess(this);
+
+    m_layoutSyms.clear();
+    m_layoutNames.clear();
+
+    m_asyncProcess->start("qdbus6", {
         "--literal",
         "org.kde.KWin", "/Layouts",
         "org.kde.KeyboardLayouts.getLayoutsList"
     });
-    process.waitForFinished(3000);  // 3 second timeout
 
-    if (process.exitCode() == 0) {
-        QByteArray output = process.readAllStandardOutput();
+    connect(m_asyncProcess, &QProcess::finished,
+            this, &WaylandBackend::onKWinLayoutsFinished);
+}
+
+void WaylandBackend::onKWinLayoutsFinished()
+{
+    if (!m_asyncProcess)
+        return;
+
+    if (m_asyncProcess->exitCode() == 0) {
+        QByteArray output = m_asyncProcess->readAllStandardOutput();
         QString outputStr = QString::fromUtf8(output).trimmed();
         // Parse qdbus6 --literal output:
         // [Argument: a(sss) {[Argument: (sss) "us", "", "Английская (США)"], [Argument: (sss) "ru", "", "Русская"]}]
@@ -235,8 +248,6 @@ void WaylandBackend::readKWinLayouts()
         QRegularExpression re("\"(\\w+)\",\\s*\"([^\"]*)\",\\s*\"([^\"]*)\"");
         QRegularExpressionMatchIterator it = re.globalMatch(outputStr);
 
-        m_layoutSyms.clear();
-        m_layoutNames.clear();
         while (it.hasNext()) {
             QRegularExpressionMatch match = it.next();
             QString sym = match.captured(1);
@@ -247,44 +258,60 @@ void WaylandBackend::readKWinLayouts()
             }
         }
     } else {
-        qWarning() << "kblayout: qdbus6 failed with exit code" << process.exitCode();
+        qWarning() << "kblayout: qdbus6 failed with exit code"
+                   << m_asyncProcess->exitCode();
     }
+
+    m_asyncProcess->deleteLater();
+    m_asyncProcess = nullptr;
 }
 
 void WaylandBackend::readKXkbConfig()
 {
-    // Use kreadconfig6 to read layout list from kxkbrc
-    QProcess process;
-    process.start("kreadconfig6", {
+    // Async: use kreadconfig6 to read layout list from kxkbrc
+    if (m_asyncProcess)
+        delete m_asyncProcess;
+    m_asyncProcess = new QProcess(this);
+
+    m_layoutSyms.clear();
+    m_layoutNames.clear();
+
+    m_asyncProcess->start("kreadconfig6", {
         "--file", "kxkbrc",
         "--group", "Layout",
         "--key", "LayoutList"
     });
-    process.waitForFinished(2000);
 
-    if (process.exitCode() == 0) {
-        QString layout = QString::fromUtf8(
-            process.readAllStandardOutput()).trimmed();
-        qDebug() << "kblayout: kreadconfig6 LayoutList =" << layout;
+    connect(m_asyncProcess, &QProcess::finished,
+            this, &WaylandBackend::onKXkbConfigFinished);
+}
 
-        if (layout.isEmpty()) {
-            qWarning() << "kblayout: kreadconfig6 returned empty";
-            return;
-        }
+void WaylandBackend::onKXkbConfigFinished()
+{
+    if (!m_asyncProcess)
+        return;
 
-        // Parse comma-separated layout list (e.g. "us,ru,de")
-        const auto parts = layout.split(',', Qt::SkipEmptyParts);
-        m_layoutSyms.clear();
-        m_layoutNames.clear();
+    QString layout = QString::fromUtf8(
+        m_asyncProcess->readAllStandardOutput()).trimmed();
+    qDebug() << "kblayout: kreadconfig6 LayoutList =" << layout;
 
-        for (const auto &sym : parts) {
-            m_layoutSyms.append(sym.trimmed().toLower());
-            m_layoutNames.append(sym.trimmed().toUpper());
-        }
-    } else {
-        qWarning() << "kblayout: kreadconfig6 failed with exit code"
-                    << process.exitCode();
+    if (layout.isEmpty()) {
+        qWarning() << "kblayout: kreadconfig6 returned empty";
+        m_asyncProcess->deleteLater();
+        m_asyncProcess = nullptr;
+        return;
     }
+
+    // Parse comma-separated layout list (e.g. "us,ru,de")
+    const auto parts = layout.split(',', Qt::SkipEmptyParts);
+
+    for (const auto &sym : parts) {
+        m_layoutSyms.append(sym.trimmed().toLower());
+        m_layoutNames.append(sym.trimmed().toUpper());
+    }
+
+    m_asyncProcess->deleteLater();
+    m_asyncProcess = nullptr;
 }
 
 // ============================================================================
@@ -311,21 +338,37 @@ void WaylandBackend::readSwayLayouts()
     m_layoutSyms.clear();
     m_layoutNames.clear();
 
-    // Try swaymsg first (most reliable when keyboard has focus)
-    QProcess proc;
-    proc.start(QStringLiteral("swaymsg"),
-               {QStringLiteral("-t"), QStringLiteral("get_inputs")});
-    proc.waitForFinished(3000);
+    // Async: Try swaymsg first (most reliable when keyboard has focus)
+    if (m_asyncProcess)
+        delete m_asyncProcess;
+    m_asyncProcess = new QProcess(this);
 
-    if (proc.exitCode() == 0) {
-        QByteArray output = proc.readAllStandardOutput();
+    m_asyncProcess->start(QStringLiteral("swaymsg"),
+               {QStringLiteral("-t"), QStringLiteral("get_inputs")});
+
+    connect(m_asyncProcess, &QProcess::finished,
+            this, &WaylandBackend::onSwayLayoutsFinished);
+}
+
+void WaylandBackend::onSwayLayoutsFinished()
+{
+    if (!m_asyncProcess)
+        return;
+
+    if (m_asyncProcess->exitCode() == 0) {
+        QByteArray output = m_asyncProcess->readAllStandardOutput();
         parseSwayJson(QString::fromUtf8(output));
-        if (!m_layoutSyms.isEmpty())
+        if (!m_layoutSyms.isEmpty()) {
+            m_asyncProcess->deleteLater();
+            m_asyncProcess = nullptr;
             return;
+        }
     }
 
     // Fallback: read from sway config file
     readSwayConfigLayouts();
+    m_asyncProcess->deleteLater();
+    m_asyncProcess = nullptr;
 }
 
 void WaylandBackend::readSwayConfigLayouts()
@@ -425,24 +468,39 @@ void WaylandBackend::readHyprlandLayouts()
     m_layoutSyms.clear();
     m_layoutNames.clear();
 
-    QProcess proc;
-    // hyprctl -j devices gives JSON devices info with keyboard layouts
-    proc.start(QStringLiteral("hyprctl"),
-               {QStringLiteral("-j"), QStringLiteral("devices")});
-    proc.waitForFinished(3000);
+    // Async: hyprctl -j devices gives JSON devices info with keyboard layouts
+    if (m_asyncProcess)
+        delete m_asyncProcess;
+    m_asyncProcess = new QProcess(this);
 
-    if (proc.exitCode() != 0) {
+    m_asyncProcess->start(QStringLiteral("hyprctl"),
+               {QStringLiteral("-j"), QStringLiteral("devices")});
+
+    connect(m_asyncProcess, &QProcess::finished,
+            this, &WaylandBackend::onHyprlandLayoutsFinished);
+}
+
+void WaylandBackend::onHyprlandLayoutsFinished()
+{
+    if (!m_asyncProcess)
+        return;
+
+    if (m_asyncProcess->exitCode() != 0) {
         qWarning() << "kblayout: hyprctl devices failed with exit code"
-                   << proc.exitCode();
+                   << m_asyncProcess->exitCode();
+        m_asyncProcess->deleteLater();
+        m_asyncProcess = nullptr;
         return;
     }
 
-    QByteArray output = proc.readAllStandardOutput();
+    QByteArray output = m_asyncProcess->readAllStandardOutput();
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(output, &parseError);
     if (parseError.error != QJsonParseError::NoError) {
         qWarning() << "kblayout: Failed to parse Hyprland JSON:"
                    << parseError.errorString();
+        m_asyncProcess->deleteLater();
+        m_asyncProcess = nullptr;
         return;
     }
 
@@ -458,18 +516,25 @@ void WaylandBackend::readHyprlandLayouts()
         }
     }
 
-    // Also get current active layout
-    QProcess proc2;
-    proc2.start(QStringLiteral("hyprctl"),
-                {QStringLiteral("-j"), QStringLiteral("keyboard")});
-    proc2.waitForFinished(3000);
+    // Also get current active layout (async)
+    if (m_asyncProcess)
+        delete m_asyncProcess;
+    m_asyncProcess = new QProcess(this);
 
-    if (proc2.exitCode() == 0) {
-        auto output2 = proc2.readAllStandardOutput();
-        auto doc2 = QJsonDocument::fromJson(output2);
-        auto kobj = doc2.object();
-        m_activeLayoutName = kobj.value(QStringLiteral("active_keymap")).toString();
-    }
+    m_asyncProcess->start(QStringLiteral("hyprctl"),
+               {QStringLiteral("-j"), QStringLiteral("keyboard")});
+
+    connect(m_asyncProcess, &QProcess::finished,
+            this, [this]() {
+        if (m_asyncProcess && m_asyncProcess->exitCode() == 0) {
+            auto output2 = m_asyncProcess->readAllStandardOutput();
+            auto doc2 = QJsonDocument::fromJson(output2);
+            auto kobj = doc2.object();
+            m_activeLayoutName = kobj.value(QStringLiteral("active_keymap")).toString();
+        }
+        m_asyncProcess->deleteLater();
+        m_asyncProcess = nullptr;
+    });
 }
 
 // ============================================================================
@@ -478,23 +543,11 @@ void WaylandBackend::readHyprlandLayouts()
 
 bool WaylandBackend::isProcessRunning(const QString &processName)
 {
-    // Check /proc for running processes
-    QDir procDir(QStringLiteral("/proc"));
-    auto pids = procDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-    for (const auto &pid : pids) {
-        QString cmdlinePath = QStringLiteral("/proc/%1/cmdline").arg(pid);
-        QFile cmdline(cmdlinePath);
-        if (cmdline.open(QIODevice::ReadOnly)) {
-            QByteArray content = cmdline.readAll();
-            // cmdline is null-separated, check if processName is in it
-            if (content.contains(processName.toUtf8())) {
-                cmdline.close();
-                return true;
-            }
-            cmdline.close();
-        }
-    }
-    return false;
+    // Use pgrep for efficient and secure process detection
+    QProcess proc;
+    proc.start("pgrep", {"-x", processName});
+    proc.waitForFinished(Kblayout::ShortProcessTimeoutMs);
+    return proc.exitCode() == 0;
 }
 
 QStringList WaylandBackend::parseIniLayout(const QString &filePath,
@@ -575,7 +628,7 @@ bool WaylandBackend::initLabwc()
     if (xkbLayout.isEmpty()) {
         QProcess proc;
         proc.start("setxkbmap", {"-query"});
-        proc.waitForFinished(2000);
+        proc.waitForFinished(Kblayout::ProcessTimeoutMs);
         if (proc.exitCode() == 0) {
             QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
             QRegularExpression re(QStringLiteral("^layout\\s+=\\s+(\\w+)"));
@@ -624,7 +677,7 @@ bool WaylandBackend::initWayfire()
         // 2. Fallback: read from XKB rules
         QProcess proc;
         proc.start("setxkbmap", {"-query"});
-        proc.waitForFinished(2000);
+        proc.waitForFinished(Kblayout::ProcessTimeoutMs);
         if (proc.exitCode() == 0) {
             QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
             QRegularExpression re(QStringLiteral("^layout\\s +=\\s+(\\w+)"));
@@ -657,7 +710,7 @@ bool WaylandBackend::initGeneric()
     // 1. Try setxkbmap -query (works if XKB is configured)
     QProcess proc;
     proc.start("setxkbmap", {"-query"});
-    proc.waitForFinished(2000);
+    proc.waitForFinished(Kblayout::ProcessTimeoutMs);
 
     if (proc.exitCode() == 0) {
         QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
@@ -708,11 +761,11 @@ int WaylandBackend::currentLayout() const
 {
     if (m_compositor == QLatin1String("kwin")) {
         // Use cached index from D-Bus signal (non-blocking)
-        return m_cachedLayoutIdx;
+        return m_currentLayoutIndex;
     }
 
     // For polling-based compositors, return cached index
-    return m_currentIdx;
+    return m_currentLayoutIndex;
 }
 
 void WaylandBackend::setLayout(int index)
@@ -721,23 +774,28 @@ void WaylandBackend::setLayout(int index)
         return;
 
     if (m_compositor == QLatin1String("kwin")) {
-        // Use qdbus6 command to avoid blocking the main thread
-        QProcess process;
-        process.start("qdbus6", {
+        // Async: Use qdbus6 command to avoid blocking the main thread
+        if (m_asyncProcess)
+            delete m_asyncProcess;
+        m_asyncProcess = new QProcess(this);
+        ++m_asyncProcessGen;
+        m_asyncSetLayoutTarget = index;
+
+        m_asyncProcess->start("qdbus6", {
             "org.kde.KWin", "/Layouts",
             "org.kde.KeyboardLayouts.setLayout",
             QString::number(index)
         });
-        process.waitForFinished(1000);
-        m_cachedLayoutIdx = index;
-        m_currentIdx = index;
+
+        connect(m_asyncProcess, &QProcess::finished,
+                this, &WaylandBackend::onSetLayoutFinished);
         return;
     }
 
     if (m_compositor == QLatin1String("sway")) {
         // Sway: switch layout by cycling to target index
         // Sway doesn't support direct layout set, so we cycle N times
-        int cycles = index - m_currentIdx;
+        int cycles = index - m_currentLayoutIndex;
         if (cycles < 0)
             cycles += m_layoutSyms.size();
         for (int i = 0; i < cycles; ++i)
@@ -746,16 +804,19 @@ void WaylandBackend::setLayout(int index)
     }
 
     if (m_compositor == QLatin1String("hyprland")) {
-        // Hyprland: set layout directly via hyprctl keyword
-        QProcess proc;
-        proc.start(QStringLiteral("hyprctl"),
+        // Async: Hyprland: set layout directly via hyprctl keyword
+        if (m_asyncProcess)
+            delete m_asyncProcess;
+        m_asyncProcess = new QProcess(this);
+        ++m_asyncProcessGen;
+        m_asyncSetLayoutTarget = index;
+
+        m_asyncProcess->start(QStringLiteral("hyprctl"),
                    {QStringLiteral("keyword"),
                     QStringLiteral("xkb_layout %1").arg(m_layoutSyms[index])});
-        proc.waitForFinished(2000);
-        if (proc.exitCode() != 0) {
-            qWarning() << "kblayout: hyprctl keyword xkb_layout failed";
-            fallbackSwitchViaKeyEmulation();
-        }
+
+        connect(m_asyncProcess, &QProcess::finished,
+                this, &WaylandBackend::onSetLayoutFinished);
         return;
     }
 
@@ -763,12 +824,44 @@ void WaylandBackend::setLayout(int index)
     fallbackSwitchViaKeyEmulation();
 }
 
+void WaylandBackend::onSetLayoutFinished()
+{
+    // Capture the process pointer before any access.
+    // If setLayout() was called again, the old process was deleted and
+    // m_asyncProcess now points to a new process. Using QPointer ensures
+    // we don't access a deleted object.
+    QPointer<QProcess> proc = m_asyncProcess;
+    if (!proc)
+        return;
+
+    // Race condition guard: verify this process belongs to the current generation.
+    // If setLayout() was called again, m_asyncProcessGen was incremented and
+    // a new process was created. This slot belongs to the old process.
+    int currentGen = m_asyncProcessGen;
+
+    if (m_asyncSetLayoutTarget >= 0) {
+        m_currentLayoutIndex = m_asyncSetLayoutTarget;
+    }
+
+    if (m_compositor == QLatin1String("hyprland") && proc->exitCode() != 0) {
+        qWarning() << "kblayout: hyprctl keyword xkb_layout failed";
+        fallbackSwitchViaKeyEmulation();
+    }
+
+    // Only clean up if this is still the active process
+    if (m_asyncProcessGen == currentGen) {
+        m_asyncProcess->deleteLater();
+        m_asyncProcess = nullptr;
+        m_asyncSetLayoutTarget = -1;
+    }
+}
+
 void WaylandBackend::nextLayout()
 {
     if (m_layoutSyms.isEmpty())
         return;
 
-    int next = (m_currentIdx + 1) % m_layoutSyms.size();
+    int next = (m_currentLayoutIndex + 1) % m_layoutSyms.size();
     setLayout(next);
 }
 
@@ -779,31 +872,14 @@ void WaylandBackend::nextLayout()
 void WaylandBackend::_on_kwin_layoutChanged(uint index)
 {
     // Cache the index from D-Bus signal (avoids blocking D-Bus call)
-    m_cachedLayoutIdx = static_cast<int>(index);
+    m_currentLayoutIndex = static_cast<int>(index);
     readKWinLayouts();
-    emit layoutChanged(m_cachedLayoutIdx);
+    emit layoutChanged(m_currentLayoutIndex);
 }
 
 void WaylandBackend::_on_led_poll_timer()
 {
-    // Read LED states via qdbus6 for KWin
-    if (m_compositor == QLatin1String("kwin")) {
-        // Try to read LED state from KWin D-Bus
-        QProcess process;
-        process.start("qdbus6", {
-            "org.kde.KWin", "/Layouts",
-            "org.kde.KeyboardLayouts.getLayout"
-        });
-        process.waitForFinished(500);
-
-        // For now, read from xkbcommon state file
-        // This is a fallback — KWin doesn't expose LED states via D-Bus
-        // We'll use a simple heuristic: read from /proc or use xinput
-        readLedStatesFromXkb();
-        return;
-    }
-
-    // For other compositors, use polling
+    // Poll LED states from sysfs
     readLedStatesFromXkb();
 }
 
@@ -812,8 +888,8 @@ void WaylandBackend::readLedStatesFromXkb()
     // Read LED states from various sources
     bool caps = false, num = false, scroll = false;
 
-    // Try multiple possible LED paths
-    QStringList ledDirs = {
+    // Try multiple possible LED paths for each LED
+    QStringList capsDirs = {
         "/sys/class/leds/input5::capslock",
         "/sys/class/leds/input4::capslock",
         "/sys/class/leds/input3::capslock",
@@ -822,18 +898,14 @@ void WaylandBackend::readLedStatesFromXkb()
         "/sys/class/leds/input0::capslock",
     };
 
-    for (const auto &dir : ledDirs) {
-        QFile brightness(dir + "/brightness");
-        if (brightness.exists()) {
-            if (brightness.open(QIODevice::ReadOnly)) {
-                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
-                caps = (state.toInt() > 0);
-            }
+    for (const auto &dir : capsDirs) {
+        if (readLedStateFromFile(dir + "/brightness")) {
+            caps = true;
             break;
         }
     }
 
-    ledDirs = {
+    QStringList numDirs = {
         "/sys/class/leds/input5::numlock",
         "/sys/class/leds/input4::numlock",
         "/sys/class/leds/input3::numlock",
@@ -842,18 +914,14 @@ void WaylandBackend::readLedStatesFromXkb()
         "/sys/class/leds/input0::numlock",
     };
 
-    for (const auto &dir : ledDirs) {
-        QFile brightness(dir + "/brightness");
-        if (brightness.exists()) {
-            if (brightness.open(QIODevice::ReadOnly)) {
-                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
-                num = (state.toInt() > 0);
-            }
+    for (const auto &dir : numDirs) {
+        if (readLedStateFromFile(dir + "/brightness")) {
+            num = true;
             break;
         }
     }
 
-    ledDirs = {
+    QStringList scrollDirs = {
         "/sys/class/leds/input5::scrolllock",
         "/sys/class/leds/input4::scrolllock",
         "/sys/class/leds/input3::scrolllock",
@@ -862,13 +930,9 @@ void WaylandBackend::readLedStatesFromXkb()
         "/sys/class/leds/input0::scrolllock",
     };
 
-    for (const auto &dir : ledDirs) {
-        QFile brightness(dir + "/brightness");
-        if (brightness.exists()) {
-            if (brightness.open(QIODevice::ReadOnly)) {
-                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
-                scroll = (state.toInt() > 0);
-            }
+    for (const auto &dir : scrollDirs) {
+        if (readLedStateFromFile(dir + "/brightness")) {
+            scroll = true;
             break;
         }
     }
@@ -887,8 +951,8 @@ void WaylandBackend::emitInitialLedState()
     // Read current LED states and emit immediately (ignoring cached values)
     bool caps = false, num = false, scroll = false;
 
-    // Try multiple possible LED paths
-    QStringList ledDirs = {
+    // Try multiple possible LED paths for each LED
+    QStringList capsDirs = {
         "/sys/class/leds/input5::capslock",
         "/sys/class/leds/input4::capslock",
         "/sys/class/leds/input3::capslock",
@@ -897,18 +961,14 @@ void WaylandBackend::emitInitialLedState()
         "/sys/class/leds/input0::capslock",
     };
 
-    for (const auto &dir : ledDirs) {
-        QFile brightness(dir + "/brightness");
-        if (brightness.exists()) {
-            if (brightness.open(QIODevice::ReadOnly)) {
-                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
-                caps = (state.toInt() > 0);
-            }
+    for (const auto &dir : capsDirs) {
+        if (readLedStateFromFile(dir + "/brightness")) {
+            caps = true;
             break;
         }
     }
 
-    ledDirs = {
+    QStringList numDirs = {
         "/sys/class/leds/input5::numlock",
         "/sys/class/leds/input4::numlock",
         "/sys/class/leds/input3::numlock",
@@ -917,18 +977,14 @@ void WaylandBackend::emitInitialLedState()
         "/sys/class/leds/input0::numlock",
     };
 
-    for (const auto &dir : ledDirs) {
-        QFile brightness(dir + "/brightness");
-        if (brightness.exists()) {
-            if (brightness.open(QIODevice::ReadOnly)) {
-                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
-                num = (state.toInt() > 0);
-            }
+    for (const auto &dir : numDirs) {
+        if (readLedStateFromFile(dir + "/brightness")) {
+            num = true;
             break;
         }
     }
 
-    ledDirs = {
+    QStringList scrollDirs = {
         "/sys/class/leds/input5::scrolllock",
         "/sys/class/leds/input4::scrolllock",
         "/sys/class/leds/input3::scrolllock",
@@ -937,13 +993,9 @@ void WaylandBackend::emitInitialLedState()
         "/sys/class/leds/input0::scrolllock",
     };
 
-    for (const auto &dir : ledDirs) {
-        QFile brightness(dir + "/brightness");
-        if (brightness.exists()) {
-            if (brightness.open(QIODevice::ReadOnly)) {
-                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
-                scroll = (state.toInt() > 0);
-            }
+    for (const auto &dir : scrollDirs) {
+        if (readLedStateFromFile(dir + "/brightness")) {
+            scroll = true;
             break;
         }
     }
@@ -955,10 +1007,20 @@ void WaylandBackend::emitInitialLedState()
     emit ledStateChanged(caps, num, scroll);
 }
 
+bool WaylandBackend::readLedStateFromFile(const QString &path)
+{
+    QFile file(path);
+    if (file.exists() && file.open(QIODevice::ReadOnly)) {
+        QString state = QString::fromUtf8(file.readAll()).trimmed();
+        file.close();
+        return state.toInt() > 0;
+    }
+    file.close();
+    return false;
+}
+
 void WaylandBackend::_on_poll_timer()
 {
-    QString prevActive = m_activeLayoutName;
-
     if (m_compositor == QLatin1String("sway")) {
         readSwayLayouts();
     } else if (m_compositor == QLatin1String("hyprland")) {
@@ -974,9 +1036,9 @@ void WaylandBackend::_on_poll_timer()
         }
     }
 
-    if (newIdx != m_currentIdx) {
-        m_currentIdx = newIdx;
-        emit layoutChanged(m_currentIdx);
+    if (newIdx != m_currentLayoutIndex) {
+        m_currentLayoutIndex = newIdx;
+        emit layoutChanged(m_currentLayoutIndex);
     }
 }
 
@@ -987,25 +1049,37 @@ void WaylandBackend::_on_poll_timer()
 void WaylandBackend::fallbackSwitchViaKeyEmulation()
 {
     // Try wtype first (modern, supports Wayland)
-    QProcess proc;
-    proc.start(QStringLiteral("wtype"),
+    if (m_asyncProcess)
+        delete m_asyncProcess;
+    m_asyncProcess = new QProcess(this);
+
+    m_asyncProcess->start(QStringLiteral("wtype"),
                {QStringLiteral("-m"), QStringLiteral("Alt+Shift")});
-    proc.waitForFinished(2000);
 
-    if (proc.exitCode() == 0) {
-        qInfo() << "kblayout: Layout switched via wtype (Alt+Shift)";
-        return;
-    }
+    connect(m_asyncProcess, &QProcess::finished,
+            this, [this]() {
+        if (m_asyncProcess && m_asyncProcess->exitCode() == 0) {
+            qInfo() << "kblayout: Layout switched via wtype (Alt+Shift)";
+            m_asyncProcess->deleteLater();
+            m_asyncProcess = nullptr;
+            return;
+        }
 
-    // Fallback to xdotool (may not work on all Wayland compositors)
-    proc.start(QStringLiteral("xdotool"),
-               {QStringLiteral("key"), QStringLiteral("Alt+Shift_L")});
-    proc.waitForFinished(2000);
+        // Fallback to xdotool (may not work on all Wayland compositors)
+        if (m_asyncProcess) {
+            m_asyncProcess->start(QStringLiteral("xdotool"),
+                       {QStringLiteral("key"), QStringLiteral("Alt+Shift_L")});
 
-    if (proc.exitCode() == 0) {
-        qInfo() << "kblayout: Layout switched via xdotool (Alt+Shift_L)";
-        return;
-    }
-
-    qWarning() << "kblayout: Neither wtype nor xdotool available for key emulation";
+            connect(m_asyncProcess, &QProcess::finished,
+                    this, [this]() {
+                if (m_asyncProcess && m_asyncProcess->exitCode() == 0) {
+                    qInfo() << "kblayout: Layout switched via xdotool (Alt+Shift_L)";
+                } else {
+                    qWarning() << "kblayout: Neither wtype nor xdotool available for key emulation";
+                }
+                m_asyncProcess->deleteLater();
+                m_asyncProcess = nullptr;
+            });
+        }
+    });
 }

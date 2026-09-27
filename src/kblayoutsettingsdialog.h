@@ -46,7 +46,6 @@ private slots:
     void onApply();
 
 private:
-    void setupUi();
     void loadSettings();
     void saveSettings();
 

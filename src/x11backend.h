@@ -26,6 +26,8 @@
 #define X11BACKEND_H
 
 #include "kblayoutbackend.h"
+#include "kblayout-config.h"
+
 #include <QHash>
 
 class QAbstractNativeEventFilter;
@@ -54,6 +56,7 @@ public:
     int currentLayout() const override;
     void setLayout(int index) override;
     void nextLayout() override;
+    uint numGroups() const;
 
 signals:
     /**
@@ -85,7 +88,9 @@ private:
     void *m_keymap{nullptr};
     QStringList m_layoutSyms;
     QStringList m_layoutNames;
-    QHash<QString, QString> m_langCache;
+    QHash<QString, QString> m_symToDisplay;
+    QHash<QString, QString> m_displayToSym;
+    bool m_evdevParsed{false};
     QAbstractNativeEventFilter *m_eventFilter{nullptr};
 
     /**

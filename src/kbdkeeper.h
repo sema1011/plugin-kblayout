@@ -30,6 +30,8 @@
 #include <QTimer>
 #include <xcb/xcb.h>
 
+#include "kblayout-config.h"
+
 /**
  * \brief Keeper types for keyboard layout persistence.
  */
@@ -69,6 +71,16 @@ public:
      */
     virtual void switchToGroup(uint group);
 
+    /**
+     * \brief Get the number of layout groups.
+     */
+    virtual uint numGroups() const { return m_numGroups; }
+
+    /**
+     * \brief Set the number of layout groups.
+     */
+    void setNumGroups(uint n) { m_numGroups = n; }
+
     KeeperType type() const { return m_type; }
 
 signals:
@@ -78,11 +90,6 @@ signals:
     void changed();
 
 protected:
-    /**
-     * \brief Called when keyboard configuration changes.
-     */
-    virtual void keyboardChanged();
-
     /**
      * \brief Called when layout changes.
      * \param group New group index.
@@ -99,6 +106,7 @@ protected:
     KeeperType m_type;
     QTimer *m_timer{nullptr};
     int m_currentGroup{0};
+    uint m_numGroups{Kblayout::DefaultMaxGroups};
 };
 
 /**

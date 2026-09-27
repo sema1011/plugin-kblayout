@@ -27,12 +27,17 @@
 #include <QAbstractNativeEventFilter>
 #include <QCoreApplication>
 #include <QFile>
-#include <QDomDocument>
+#include <QXmlStreamReader>
 #include <QDebug>
 
 #include <xkbcommon/xkbcommon-x11.h>
 #include <xcb/xcb.h>
 
+// xcb/xkb.h uses 'explicit' as a C struct field name (xcb_xkb_set_explicit_t),
+// which conflicts with the C++ keyword. Redefine it only during header inclusion.
+#ifdef explicit
+#undef explicit
+#endif
 #define explicit _explicit
 #include <xcb/xkb.h>
 #undef explicit
@@ -183,48 +188,80 @@ void X11Backend::readState()
 
 void X11Backend::parseEvdevXml()
 {
-    if (!m_langCache.isEmpty())
+    if (m_evdevParsed)
         return; // Already cached
 
     QString xmlPath = QStringLiteral("/usr/share/X11/xkb/rules/evdev.xml");
     QFile file(xmlPath);
-    if (!file.open(QIODevice::ReadOnly))
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
         return;
 
-    QDomDocument doc;
-    if (!doc.setContent(&file)) {
-        file.close();
-        return;
-    }
+    QXmlStreamReader reader(&file);
+    while (!reader.atEnd() && !reader.hasError()) {
+        QXmlStreamReader::TokenType token = reader.readNext();
 
-    QDomElement root = doc.documentElement();
-    QDomElement layoutList = root.firstChildElement(QStringLiteral("layoutList"));
+        if (token == QXmlStreamReader::StartElement) {
+            if (reader.name() == QStringLiteral("layout")) {
+                QString sym, desc;
 
-    for (int i = 0; i < layoutList.childNodes().count(); ++i) {
-        QDomElement config = layoutList.childNodes().at(i)
-            .firstChildElement(QStringLiteral("configItem"));
-        QString desc = config.firstChildElement(QStringLiteral("description"))
-            .firstChild().toText().data();
-        QString name = config.firstChildElement(QStringLiteral("name"))
-            .firstChild().toText().data();
+                // Parse configItem inside layout
+                while (!(reader.tokenType() == QXmlStreamReader::EndElement && reader.name() == QStringLiteral("layout"))) {
+                    reader.readNext();
+                    if (reader.tokenType() == QXmlStreamReader::StartElement) {
+                        if (reader.name() == QStringLiteral("configItem")) {
+                            while (!(reader.tokenType() == QXmlStreamReader::EndElement && reader.name() == QStringLiteral("configItem"))) {
+                                reader.readNext();
+                                if (reader.tokenType() == QXmlStreamReader::StartElement) {
+                                    if (reader.name() == QStringLiteral("name"))
+                                        sym = reader.readElementText();
+                                    else if (reader.name() == QStringLiteral("description"))
+                                        desc = reader.readElementText();
+                                }
+                            }
+                        } else if (reader.name() == QStringLiteral("variantList")) {
+                            // Parse variants
+                            while (!(reader.tokenType() == QXmlStreamReader::EndElement && reader.name() == QStringLiteral("variantList"))) {
+                                reader.readNext();
+                                if (reader.tokenType() == QXmlStreamReader::StartElement) {
+                                    if (reader.name() == QStringLiteral("variant")) {
+                                        QString varName;
+                                        while (!(reader.tokenType() == QXmlStreamReader::EndElement && reader.name() == QStringLiteral("variant"))) {
+                                            reader.readNext();
+                                            if (reader.tokenType() == QXmlStreamReader::StartElement) {
+                                                if (reader.name() == QStringLiteral("configItem")) {
+                                                    while (!(reader.tokenType() == QXmlStreamReader::EndElement && reader.name() == QStringLiteral("configItem"))) {
+                                                        reader.readNext();
+                                                        if (reader.tokenType() == QXmlStreamReader::StartElement) {
+                                                            if (reader.name() == QStringLiteral("name"))
+                                                                varName = reader.readElementText();
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if (!varName.isEmpty() && !desc.isEmpty())
+                                            m_symToDisplay.insert(varName, desc);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
-        // Store: displayName (description) -> shortSymbol (name)
-        m_langCache.insert(desc, name);
-        // Also store: shortSymbol -> displayName (for fallback)
-        m_langCache.insert(name, desc);
-
-        // Also cache variants: variantName -> layout description
-        QDomElement variantList = layoutList.childNodes().at(i)
-            .firstChildElement(QStringLiteral("variantList"));
-        for (int j = 0; j < variantList.childNodes().count(); ++j) {
-            QDomElement varConfig = variantList.childNodes().at(j)
-                .firstChildElement(QStringLiteral("configItem"));
-            QString varName = varConfig.firstChildElement(QStringLiteral("name"))
-                .firstChild().toText().data();
-            m_langCache.insert(varName, desc);
+                // Store bidirectional mappings
+                if (!sym.isEmpty() && !desc.isEmpty()) {
+                    m_symToDisplay.insert(sym, desc);
+                    m_displayToSym.insert(desc, sym);
+                }
+            }
         }
     }
+
+    if (reader.hasError()) {
+        qWarning() << "kblayout: Failed to parse evdev.xml:" << reader.errorString();
+    }
     file.close();
+    m_evdevParsed = true;
 }
 
 void X11Backend::readKbdInfo()
@@ -244,8 +281,8 @@ void X11Backend::readKbdInfo()
             m_layoutNames.append(displayName);
 
             // Direct lookup: displayName -> shortSymbol
-            auto it = m_langCache.find(displayName);
-            if (it != m_langCache.constEnd()) {
+            auto it = m_displayToSym.find(displayName);
+            if (it != m_displayToSym.constEnd()) {
                 m_layoutSyms.append(it.value());
             } else {
                 m_layoutSyms.append(displayName.toUpper());
@@ -277,6 +314,14 @@ int X11Backend::currentLayout() const
         }
     }
     return 0;
+}
+
+uint X11Backend::numGroups() const
+{
+    if (!m_keymap)
+        return Kblayout::DefaultMaxGroups;  // Default fallback
+    // In xkbcommon, "layouts" are also called "groups"
+    return static_cast<uint>(xkb_keymap_num_layouts(static_cast<xkb_keymap*>(m_keymap)));
 }
 
 void X11Backend::setLayout(int index)

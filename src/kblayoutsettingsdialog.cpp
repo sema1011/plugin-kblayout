@@ -56,11 +56,6 @@ KbLayoutSettingsDialog::KbLayoutSettingsDialog(KbLayoutSettings *settings, QWidg
 
 KbLayoutSettingsDialog::~KbLayoutSettingsDialog() = default;
 
-void KbLayoutSettingsDialog::setupUi()
-{
-    // UI is set up by ui_kblayoutsettingsdialog.h from .ui file
-}
-
 void KbLayoutSettingsDialog::loadSettings()
 {
     if (!m_settings)

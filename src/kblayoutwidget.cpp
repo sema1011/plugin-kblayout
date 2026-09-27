@@ -28,6 +28,7 @@
 #include <QToolButton>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QRegularExpression>
 #include <QFont>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -168,8 +169,28 @@ void KbLayoutWidget::setFontSize(int size)
 
 void KbLayoutWidget::setFlagPattern(const QString &pattern)
 {
-    m_flagPattern = pattern;
+    // Validate pattern to prevent path traversal attacks
+    if (!validateFlagPattern(pattern)) {
+        qWarning() << "kblayout: Invalid flag pattern (contains '..' or unsafe characters):" << pattern;
+        m_flagPattern.clear();
+    } else {
+        m_flagPattern = pattern;
+    }
     updateDisplay();
+}
+
+bool KbLayoutWidget::validateFlagPattern(const QString &pattern)
+{
+    if (pattern.isEmpty())
+        return true;  // Empty is valid (no flags)
+
+    // Check for path traversal
+    if (pattern.contains(".."))
+        return false;
+
+    // Only allow safe characters: alphanumeric, /, _, -, ., %, space
+    QRegularExpression re(QStringLiteral("^[a-zA-Z0-9/_\\-.% ]+$"));
+    return re.match(pattern).hasMatch();
 }
 
 void KbLayoutWidget::setShowFlags(bool show)

@@ -27,6 +27,7 @@
 #include "kblayoutbackend.h"
 #include "kblayoutwidget.h"
 #include "kblayoutsettingsdialog.h"
+#include "kblayout-config.h"
 
 #include <QTranslator>
 #include <QApplication>
@@ -59,14 +60,13 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
     m_widget()
 {
     // Install translator for plugin localization
-    m_translator = new QTranslator(this);
     QString locale = QLocale::system().name();  // e.g. "ru_RU", "en_US"
     QString translationPath = LXQT_SHARE_DIR "/translations/";
     
     // Try locale-specific translation (e.g. ru_RU -> ru.qm)
     QString qmFile = locale.split('_').first();  // "ru"
-    if (m_translator->load(qmFile, translationPath)) {
-        QApplication::installTranslator(m_translator);
+    if (m_translator.load(qmFile, translationPath)) {
+        QApplication::installTranslator(&m_translator);
     }
     m_settings.init(settings());
 
@@ -93,6 +93,7 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
             m_keeper = new WinKbdKeeper(
                 static_cast<xcb_connection_t*>(x11Backend->connection()),
                 x11Backend->deviceId());
+            m_keeper->setNumGroups(x11Backend->numGroups());
             m_keeper->setup();
         }
 #endif
@@ -283,8 +284,8 @@ void KbLayout::showLayoutNotification(const QString &layoutName)
                                               QString(),
                                               QString(),
                                               QString(),
-                                              0,
-                                              5000);
+                                               0,
+                                               Kblayout::NotificationTimeoutMs);
         if (reply.isValid()) {
             return;
         }
@@ -307,7 +308,7 @@ void KbLayout::showLayoutNotification(const QString &layoutName)
             << layoutName                              // body
             << QStringList()                           // actions
             << QVariantMap()                           // hints
-            << int(3000);                               // timeout
+            << Kblayout::ProcessTimeoutMs;              // timeout
 
         QDBusConnection::sessionBus().send(msg);
     }

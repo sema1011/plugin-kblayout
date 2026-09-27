@@ -115,6 +115,11 @@ else()
     message(STATUS "kblayout: Wayland backend disabled")
 endif()
 
+# Ensure at least one backend is enabled
+if(NOT KBLAYOUT_X11 AND NOT KBLAYOUT_WAYLAND)
+    message(FATAL_ERROR "kblayout: At least one backend must be enabled (KBLAYOUT_X11 or KBLAYOUT_WAYLAND)")
+endif()
+
 # Build plugin as shared library
 add_library(${PROJECT_NAME} MODULE
     ${HEADERS}

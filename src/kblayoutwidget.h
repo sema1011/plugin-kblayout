@@ -125,6 +125,7 @@ private:
     void updateDisplay();
     void buildContextMenu();
     QPoint popupPosition();
+    bool validateFlagPattern(const QString &pattern);
 
     QToolButton *m_button{nullptr};
     QMenu *m_menu{nullptr};
