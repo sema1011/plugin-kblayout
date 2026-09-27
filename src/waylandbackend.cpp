@@ -41,8 +41,6 @@
 #include <QRegularExpression>
 #include <QFile>
 #include <QTextStream>
-#include <QStandardPaths>
-#include <QSettings>
 
 WaylandBackend::WaylandBackend(QObject *parent) :
     KbLayoutBackend(parent)
@@ -196,12 +194,10 @@ bool WaylandBackend::initKWin()
 
 void WaylandBackend::readKWinLayouts()
 {
-    if (!m_kwinLayouts)
-        return;
-
-    // Use qdbus command to avoid blocking the main thread
+    // Use qdbus6 command to avoid blocking the main thread
     QProcess process;
-    process.start("qdbus", {
+    process.start("qdbus6", {
+        "--literal",
         "org.kde.KWin", "/Layouts",
         "org.kde.KeyboardLayouts.getLayoutsList"
     });
@@ -210,88 +206,64 @@ void WaylandBackend::readKWinLayouts()
     if (process.exitCode() == 0) {
         QByteArray output = process.readAllStandardOutput();
         QString outputStr = QString::fromUtf8(output).trimmed();
+        qDebug() << "kblayout: qdbus6 output:" << outputStr;
 
-        // Parse: [('us', '', 'English (US)'), ('ru', '', 'Russian')]
-        int depth = 0;
-        int start = -1;
-        QStringList layouts;
-
-        for (int i = 0; i < outputStr.size(); ++i) {
-            QChar c = outputStr[i];
-            if (c == '(') {
-                if (depth == 1) start = i + 1;
-                depth++;
-            } else if (c == ')') {
-                depth--;
-                if (depth == 1 && start >= 0) {
-                    QString tuple = outputStr.mid(start, i - start);
-                    layouts.append(tuple);
-                    start = -1;
-                }
-            }
-        }
+        // Parse qdbus6 --literal output:
+        // [Argument: a(sss) {[Argument: (sss) "us", "", "Английская (США)"], [Argument: (sss) "ru", "", "Русская"]}]
+        // Extract all "sym", "", "Display Name" triplets
+        QRegularExpression re(R"("(\w+)",\s*"([^"]*)",\s*"([^"]*)")");
+        QRegularExpressionMatchIterator it = re.globalMatch(outputStr);
 
         m_layoutSyms.clear();
         m_layoutNames.clear();
-        for (const auto &tuple : layouts) {
-            // Parse ('us', '', 'English (US)')
-            QStringList parts = tuple.split(',', Qt::SkipEmptyParts);
-            if (parts.size() >= 3) {
-                QString sym = parts[0].trimmed().remove('\'');
-                QString displayName = parts[2].trimmed().remove('\'');
+        while (it.hasNext()) {
+            QRegularExpressionMatch match = it.next();
+            QString sym = match.captured(1);
+            QString displayName = match.captured(3);
+            if (!sym.isEmpty()) {
                 m_layoutSyms.append(sym);
                 m_layoutNames.append(displayName.isEmpty() ? sym.toUpper() : displayName);
             }
         }
+    } else {
+        qWarning() << "kblayout: qdbus6 failed with exit code" << process.exitCode();
     }
 }
 
 void WaylandBackend::readKXkbConfig()
 {
-    // Read from kxkbrc config (KDE keyboard settings)
-    QString configPath = QStandardPaths::locate(
-        QStandardPaths::ConfigLocation,
-        QStringLiteral("kxkbrc"));
-    if (configPath.isEmpty()) {
-        qWarning() << "kblayout: kxkbrc not found";
-        return;
+    // Use kreadconfig6 to read layout list from kxkbrc
+    QProcess process;
+    process.start("kreadconfig6", {
+        "--file", "kxkbrc",
+        "--group", "Layout",
+        "--key", "LayoutList"
+    });
+    process.waitForFinished(2000);
+
+    if (process.exitCode() == 0) {
+        QString layout = QString::fromUtf8(
+            process.readAllStandardOutput()).trimmed();
+        qDebug() << "kblayout: kreadconfig6 LayoutList =" << layout;
+
+        if (layout.isEmpty()) {
+            qWarning() << "kblayout: kreadconfig6 returned empty";
+            return;
+        }
+
+        // Parse comma-separated layout list (e.g. "us,ru,de")
+        const auto parts = layout.split(',', Qt::SkipEmptyParts);
+        m_layoutSyms.clear();
+        m_layoutNames.clear();
+
+        for (const auto &sym : parts) {
+            m_layoutSyms.append(sym.trimmed().toLower());
+            m_layoutNames.append(sym.trimmed().toUpper());
+        }
+    } else {
+        qWarning() << "kblayout: kreadconfig6 failed with exit code"
+                    << process.exitCode();
     }
-    qDebug() << "kblayout: Reading kxkbrc from" << configPath;
-
-    QSettings settings(configPath, QSettings::IniFormat);
-    settings.beginGroup(QStringLiteral("Layout"));
-
-    QString layout = settings.value(QStringLiteral("LayoutList")).toString();
-    qDebug() << "kblayout: kxkbrc LayoutList =" << layout;
-    if (layout.isEmpty()) {
-        qWarning() << "kblayout: kxkbrc LayoutList is empty";
-        return;
-    }
-
-    // Parse comma-separated layout list (e.g. "us,ru,de")
-    const auto parts = layout.split(',', Qt::SkipEmptyParts);
-    m_layoutSyms.clear();
-    m_layoutNames.clear();
-
-    for (const auto &sym : parts) {
-        m_layoutSyms.append(sym.trimmed().toLower());
-        // Try to get display name from variant
-        QString variant = settings.value(
-            QStringLiteral("VariantList") + '_' + sym.trimmed()).toString();
-        m_layoutNames.append(variant.isEmpty() ? sym.trimmed().toUpper()
-                                                : variant.trimmed());
-    }
-
-    // Read current layout index
-    QString current = settings.value(QStringLiteral("Use")).toString();
-    if (!current.isEmpty()) {
-        int idx = parts.indexOf(current.trimmed());
-        if (idx >= 0)
-            m_currentIdx = idx;
-    }
-
-    settings.endGroup();
-    qDebug() << "kblayout: kxkbrc found" << m_layoutSyms.size() << "layouts:" << m_layoutSyms;
 }
 
 // ============================================================================
