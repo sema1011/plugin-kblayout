@@ -613,33 +613,63 @@ void WaylandBackend::_on_led_poll_timer()
 
 void WaylandBackend::readLedStatesFromXkb()
 {
-    // Read LED states from xkbcommon state
-    // This is a simplified implementation — in production, we'd use
-    // xkbcommon directly or read from the compositor's state
+    qDebug() << "kblayout: LED polling timer triggered";
+    
+    // Read LED states from various sources
     bool caps = false, num = false, scroll = false;
 
-    // Try to read from /sys/class/leds (Linux kernel LED subsystem)
-    QFile capsLed("/sys/class/leds/usb::kbd_caps");
-    if (capsLed.exists()) {
-        if (capsLed.open(QIODevice::ReadOnly)) {
-            QString state = QString::fromUtf8(capsLed.readAll()).trimmed();
-            caps = (state == "1" || state == "on" || state == "1\n");
+    // Try multiple possible LED paths
+    QStringList ledPaths = {
+        "/sys/class/leds/usb::kbd_caps",
+        "/sys/class/leds/platform::capslock",
+        "/sys/class/leds/capslock",
+    };
+
+    for (const auto &path : ledPaths) {
+        QFile capsLed(path);
+        if (capsLed.exists()) {
+            if (capsLed.open(QIODevice::ReadOnly)) {
+                QString state = QString::fromUtf8(capsLed.readAll()).trimmed();
+                caps = (state == "1" || state == "on" || state == "1\n");
+                qDebug() << "kblayout: CapsLED state from" << path << "=" << state;
+            }
+            break;
         }
     }
 
-    QFile numLed("/sys/class/leds/usb::kbd_num");
-    if (numLed.exists()) {
-        if (numLed.open(QIODevice::ReadOnly)) {
-            QString state = QString::fromUtf8(numLed.readAll()).trimmed();
-            num = (state == "1" || state == "on" || state == "1\n");
+    ledPaths = {
+        "/sys/class/leds/usb::kbd_num",
+        "/sys/class/leds/platform::numlock",
+        "/sys/class/leds/numlock",
+    };
+
+    for (const auto &path : ledPaths) {
+        QFile numLed(path);
+        if (numLed.exists()) {
+            if (numLed.open(QIODevice::ReadOnly)) {
+                QString state = QString::fromUtf8(numLed.readAll()).trimmed();
+                num = (state == "1" || state == "on" || state == "1\n");
+                qDebug() << "kblayout: NumLED state from" << path << "=" << state;
+            }
+            break;
         }
     }
 
-    QFile scrollLed("/sys/class/leds/usb::kbd_scroll");
-    if (scrollLed.exists()) {
-        if (scrollLed.open(QIODevice::ReadOnly)) {
-            QString state = QString::fromUtf8(scrollLed.readAll()).trimmed();
-            scroll = (state == "1" || state == "on" || state == "1\n");
+    ledPaths = {
+        "/sys/class/leds/usb::kbd_scroll",
+        "/sys/class/leds/platform::scrolllock",
+        "/sys/class/leds/scrolllock",
+    };
+
+    for (const auto &path : ledPaths) {
+        QFile scrollLed(path);
+        if (scrollLed.exists()) {
+            if (scrollLed.open(QIODevice::ReadOnly)) {
+                QString state = QString::fromUtf8(scrollLed.readAll()).trimmed();
+                scroll = (state == "1" || state == "on" || state == "1\n");
+                qDebug() << "kblayout: ScrollLED state from" << path << "=" << state;
+            }
+            break;
         }
     }
 
@@ -648,6 +678,7 @@ void WaylandBackend::readLedStatesFromXkb()
         m_ledCaps = caps;
         m_ledNum = num;
         m_ledScroll = scroll;
+        qDebug() << "kblayout: LED states changed:" << "caps=" << caps << "num=" << num << "scroll=" << scroll;
         emit ledStateChanged(caps, num, scroll);
     }
 }
