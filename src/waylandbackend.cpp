@@ -686,6 +686,79 @@ void WaylandBackend::readLedStatesFromXkb()
     }
 }
 
+void WaylandBackend::emitInitialLedState()
+{
+    // Read current LED states and emit immediately (ignoring cached values)
+    bool caps = false, num = false, scroll = false;
+
+    // Try multiple possible LED paths
+    QStringList ledDirs = {
+        "/sys/class/leds/input5::capslock",
+        "/sys/class/leds/input4::capslock",
+        "/sys/class/leds/input3::capslock",
+        "/sys/class/leds/input2::capslock",
+        "/sys/class/leds/input1::capslock",
+        "/sys/class/leds/input0::capslock",
+    };
+
+    for (const auto &dir : ledDirs) {
+        QFile brightness(dir + "/brightness");
+        if (brightness.exists()) {
+            if (brightness.open(QIODevice::ReadOnly)) {
+                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
+                caps = (state.toInt() > 0);
+            }
+            break;
+        }
+    }
+
+    ledDirs = {
+        "/sys/class/leds/input5::numlock",
+        "/sys/class/leds/input4::numlock",
+        "/sys/class/leds/input3::numlock",
+        "/sys/class/leds/input2::numlock",
+        "/sys/class/leds/input1::numlock",
+        "/sys/class/leds/input0::numlock",
+    };
+
+    for (const auto &dir : ledDirs) {
+        QFile brightness(dir + "/brightness");
+        if (brightness.exists()) {
+            if (brightness.open(QIODevice::ReadOnly)) {
+                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
+                num = (state.toInt() > 0);
+            }
+            break;
+        }
+    }
+
+    ledDirs = {
+        "/sys/class/leds/input5::scrolllock",
+        "/sys/class/leds/input4::scrolllock",
+        "/sys/class/leds/input3::scrolllock",
+        "/sys/class/leds/input2::scrolllock",
+        "/sys/class/leds/input1::scrolllock",
+        "/sys/class/leds/input0::scrolllock",
+    };
+
+    for (const auto &dir : ledDirs) {
+        QFile brightness(dir + "/brightness");
+        if (brightness.exists()) {
+            if (brightness.open(QIODevice::ReadOnly)) {
+                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
+                scroll = (state.toInt() > 0);
+            }
+            break;
+        }
+    }
+
+    // Update cached values and emit immediately
+    m_ledCaps = caps;
+    m_ledNum = num;
+    m_ledScroll = scroll;
+    emit ledStateChanged(caps, num, scroll);
+}
+
 void WaylandBackend::_on_poll_timer()
 {
     QString prevActive = m_activeLayoutName;

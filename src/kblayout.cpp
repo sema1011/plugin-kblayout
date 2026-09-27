@@ -81,6 +81,9 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
             m_keeper->setup();
         }
 #endif
+
+        // Emit initial LED state to show indicators immediately
+        m_backend->emitInitialLedState();
     }
 
     // Connect widget signals to plugin slots

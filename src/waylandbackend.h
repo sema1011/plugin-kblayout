@@ -155,9 +155,14 @@ private slots:
     void _on_led_poll_timer();
 
     /**
-     * \brief Read LED states from xkbcommon/sysfs.
+     * \brief Read LED states from sysfs.
      */
     void readLedStatesFromXkb();
+
+    /**
+     * \brief Emit initial LED state to widget.
+     */
+    void emitInitialLedState();
 
 private:
     bool m_valid{false};

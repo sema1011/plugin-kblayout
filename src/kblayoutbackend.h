@@ -68,6 +68,11 @@ public:
      */
     virtual void nextLayout() = 0;
 
+    /**
+     * \brief Emit initial LED state to widget.
+     */
+    virtual void emitInitialLedState() {}
+
 signals:
     /**
      * \brief Emitted when the active layout changes.
