@@ -202,7 +202,7 @@ void AppKbdKeeper::checkState()
         if (newFocus != XCB_NONE && newFocus != XCB_WINDOW_NONE) {
             // Get window class (simplified - would need WM_CLASS property)
             // For now, use window ID as proxy
-            QString className = QString("win_%1").arg(newFocus, 0, 16);
+            QString className = QStringLiteral("win_%1").arg(newFocus, 0, 16);
 
             if (className != m_activeClass) {
                 m_activeClass = className;

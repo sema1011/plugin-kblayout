@@ -117,9 +117,10 @@ endif()
 add_library(${PROJECT_NAME} MODULE
     ${HEADERS}
     ${SOURCES}
+    ${UI_HEADERS}
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBRARIES})
 

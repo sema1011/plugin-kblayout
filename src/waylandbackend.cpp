@@ -182,7 +182,7 @@ void WaylandBackend::readSwayLayouts()
 
     if (proc.exitCode() == 0) {
         QByteArray output = proc.readAllStandardOutput();
-        parseSwayJson(output);
+        parseSwayJson(QString::fromUtf8(output));
         if (!m_layoutSyms.isEmpty())
             return;
     }
@@ -212,7 +212,7 @@ void WaylandBackend::readSwayConfigLayouts()
             QRegularExpression re(QStringLiteral(R"(input\s+\*\s+xkb_layout\s+([\w,]+))"));
             auto match = re.match(line);
             if (match.hasMatch()) {
-                QStringList layouts = match.captured(1).split(',');
+                QStringList layouts = match.captured(1).split(QLatin1Char(','));
                 for (const auto &l : layouts) {
                     if (!m_layoutSyms.contains(l))
                         m_layoutSyms.append(l);

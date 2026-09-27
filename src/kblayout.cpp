@@ -271,7 +271,7 @@ void KbLayout::showLayoutNotification(const QString &layoutName)
     if (notify2.isValid()) {
         // Arguments: app_name, replaces_id, app_icon, summary, body, actions, hints, timeout
         QDBusMessage msg = QDBusMessage::createMethodCall(
-            notify2.service(), notify2.path(), notify2.interface(), "Notify");
+            notify2.service(), notify2.path(), notify2.interface(), QStringLiteral("Notify"));
         msg << QStringLiteral("LXQt Keyboard Layout")  // app_name
             << uint(0)                                  // replaces_id
             << QStringLiteral("input-keyboard")         // app_icon

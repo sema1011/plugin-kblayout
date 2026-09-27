@@ -56,21 +56,21 @@ KbLayoutWidget::KbLayoutWidget(QWidget *parent) :
     mainLayout->addWidget(m_button);
 
     // LED indicators (initially hidden)
-    m_capsLabel = new QLabel("Caps", this);
+    m_capsLabel = new QLabel(QStringLiteral("Caps"), this);
     m_capsLabel->setFixedSize(24, 16);
-    m_capsLabel->setStyleSheet("color: gray; font-size: 9px;");
+    m_capsLabel->setStyleSheet(QStringLiteral("color: gray; font-size: 9px;"));
     m_capsLabel->setVisible(false);
     mainLayout->addWidget(m_capsLabel);
 
-    m_numLabel = new QLabel("Num", this);
+    m_numLabel = new QLabel(QStringLiteral("Num"), this);
     m_numLabel->setFixedSize(24, 16);
-    m_numLabel->setStyleSheet("color: gray; font-size: 9px;");
+    m_numLabel->setStyleSheet(QStringLiteral("color: gray; font-size: 9px;"));
     m_numLabel->setVisible(false);
     mainLayout->addWidget(m_numLabel);
 
-    m_scrollLabel = new QLabel("Scr", this);
+    m_scrollLabel = new QLabel(QStringLiteral("Scr"), this);
     m_scrollLabel->setFixedSize(24, 16);
-    m_scrollLabel->setStyleSheet("color: gray; font-size: 9px;");
+    m_scrollLabel->setStyleSheet(QStringLiteral("color: gray; font-size: 9px;"));
     m_scrollLabel->setVisible(false);
     mainLayout->addWidget(m_scrollLabel);
 
@@ -115,24 +115,24 @@ void KbLayoutWidget::setLedState(bool caps, bool num, bool scroll)
     if (m_showCaps) {
         m_capsLabel->setVisible(true);
         m_capsLabel->setStyleSheet(caps
-            ? "color: green; font-size: 9px;"
-            : "color: gray; font-size: 9px;");
+            ? QStringLiteral("color: green; font-size: 9px;")
+            : QStringLiteral("color: gray; font-size: 9px;"));
     }
 
     // Update Num LED
     if (m_showNum) {
         m_numLabel->setVisible(true);
         m_numLabel->setStyleSheet(num
-            ? "color: green; font-size: 9px;"
-            : "color: gray; font-size: 9px;");
+            ? QStringLiteral("color: green; font-size: 9px;")
+            : QStringLiteral("color: gray; font-size: 9px;"));
     }
 
     // Update Scroll LED
     if (m_showScroll) {
         m_scrollLabel->setVisible(true);
         m_scrollLabel->setStyleSheet(scroll
-            ? "color: green; font-size: 9px;"
-            : "color: gray; font-size: 9px;");
+            ? QStringLiteral("color: green; font-size: 9px;")
+            : QStringLiteral("color: gray; font-size: 9px;"));
     }
 }
 
@@ -179,7 +179,7 @@ void KbLayoutWidget::updateDisplay()
         // Tooltip: full layout info + controls
         QString tooltip;
         if (!m_layoutNames.isEmpty() && m_currentIdx < m_layoutNames.size()) {
-            tooltip = QString("%1 (%2)")
+            tooltip = QStringLiteral("%1 (%2)")
                     .arg(m_layoutNames[m_currentIdx])
                     .arg(m_layoutSyms[m_currentIdx].toUpper());
         } else {
@@ -244,7 +244,7 @@ void KbLayoutWidget::buildContextMenu()
     for (int i = 0; i < m_layoutSyms.size(); ++i) {
         QString label = m_layoutNames.isEmpty()
                 ? m_layoutSyms[i].toUpper()
-                : QString("%1 (%2)").arg(m_layoutNames[i]).arg(m_layoutSyms[i].toUpper());
+                : QStringLiteral("%1 (%2)").arg(m_layoutNames[i]).arg(m_layoutSyms[i].toUpper());
 
         QAction *action = m_menu->addAction(label);
 
