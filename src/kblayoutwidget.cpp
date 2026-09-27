@@ -206,14 +206,14 @@ void KbLayoutWidget::updateDisplay()
                 QStringLiteral("%1"), m_layoutSyms[m_currentIdx].toLower());
             if (QFile::exists(flagFile)) {
                 layoutIcon = QIcon(flagFile);
-                // Verify icon produces a pixmap at button's icon size
-                if (layoutIcon.pixmap(m_button->iconSize()).isNull()) {
+                // Verify icon produces a pixmap (use fixed size since iconSize() is 0,0 by default)
+                if (layoutIcon.pixmap(24, 24).isNull()) {
                     layoutIcon = QIcon();
                 }
             }
         }
 
-        if (!layoutIcon.pixmap(m_button->iconSize()).isNull()) {
+        if (!layoutIcon.pixmap(24, 24).isNull()) {
             // Icon mode: show flag icon only (like kbindicator)
             m_button->setIcon(layoutIcon);
             m_button->setToolButtonStyle(Qt::ToolButtonIconOnly);
