@@ -851,25 +851,25 @@ void WaylandBackend::setLayout(int index)
         return;
 
     if (m_compositor == QLatin1String("kwin")) {
-        // Async: Use qdbus6 command to avoid blocking the main thread
-        if (m_asyncProcess)
-            delete m_asyncProcess;
-        m_asyncProcess = new QProcess(this);
-        ++m_asyncProcessGen;
-        m_asyncSetLayoutTarget = index;
-
-        m_asyncProcess->start("qdbus6", {
-            "org.kde.KWin", "/Layouts",
-            "org.kde.KeyboardLayouts.setLayout",
-            QString::number(index)
-        });
-
-        connect(m_asyncProcess, &QProcess::finished,
-                this, &WaylandBackend::onSetLayoutFinished);
+        // Synchronous D-Bus call — m_kwinLayouts is already connected
+        if (m_kwinLayouts && m_kwinLayouts->isValid()) {
+            QDBusReply<void> reply =
+                m_kwinLayouts->call(QStringLiteral("setLayout"), index);
+            if (reply.isValid()) {
+                m_currentLayoutIndex = index;
+                emit layoutChanged(m_currentLayoutIndex);
+            } else {
+                qWarning() << "kblayout: KWin setLayout D-Bus call failed:"
+                           << reply.error().message();
+            }
+        }
         return;
     }
 
     if (m_compositor == QLatin1String("sway")) {
+        m_currentLayoutIndex = index;
+        emit layoutChanged(m_currentLayoutIndex);
+
         // Sway: switch layout by cycling to target index
         // Sway doesn't support direct layout set, so we cycle N times
         int cycles = index - m_currentLayoutIndex;
@@ -881,13 +881,20 @@ void WaylandBackend::setLayout(int index)
     }
 
     if (m_compositor == QLatin1String("hyprland")) {
-        // Async: Hyprland: set layout directly via hyprctl keyword
-        if (m_asyncProcess)
-            delete m_asyncProcess;
-        m_asyncProcess = new QProcess(this);
-        ++m_asyncProcessGen;
-        m_asyncSetLayoutTarget = index;
+        m_currentLayoutIndex = index;
+        emit layoutChanged(m_currentLayoutIndex);
 
+        // Async: Hyprland: set layout directly via hyprctl keyword
+        if (m_asyncProcess && m_asyncProcess->state() != QProcess::NotRunning) {
+            m_asyncProcess->kill();
+            m_asyncProcess->waitForFinished(Kblayout::ShortProcessTimeoutMs);
+        }
+        if (m_asyncProcess) {
+            m_asyncProcess->deleteLater();
+            m_asyncProcess = nullptr;
+        }
+
+        m_asyncProcess = new QProcess(this);
         m_asyncProcess->start(QStringLiteral("hyprctl"),
                    {QStringLiteral("keyword"),
                     QStringLiteral("xkb_layout %1").arg(m_layoutSyms[index])});
@@ -903,34 +910,24 @@ void WaylandBackend::setLayout(int index)
 
 void WaylandBackend::onSetLayoutFinished()
 {
-    // Capture the process pointer before any access.
-    // If setLayout() was called again, the old process was deleted and
-    // m_asyncProcess now points to a new process. Using QPointer ensures
-    // we don't access a deleted object.
+    // This slot handles both KWin (now sync, so this won't be called for it)
+    // and Hyprland (async hyprctl). Only process Hyprland results.
+    if (m_compositor != QLatin1String("hyprland"))
+        return;
+
     QPointer<QProcess> proc = m_asyncProcess;
     if (!proc)
         return;
 
-    // Race condition guard: verify this process belongs to the current generation.
-    // If setLayout() was called again, m_asyncProcessGen was incremented and
-    // a new process was created. This slot belongs to the old process.
-    int currentGen = m_asyncProcessGen;
-
-    if (m_asyncSetLayoutTarget >= 0) {
-        m_currentLayoutIndex = m_asyncSetLayoutTarget;
-    }
-
-    if (m_compositor == QLatin1String("hyprland") && proc->exitCode() != 0) {
+    if (proc->exitCode() == 0) {
+        // Hyprland succeeded — index was already set by setLayout()
+    } else {
         qWarning() << "kblayout: hyprctl keyword xkb_layout failed";
         fallbackSwitchViaKeyEmulation();
     }
 
-    // Only clean up if this is still the active process
-    if (m_asyncProcessGen == currentGen) {
-        m_asyncProcess->deleteLater();
-        m_asyncProcess = nullptr;
-        m_asyncSetLayoutTarget = -1;
-    }
+    m_asyncProcess->deleteLater();
+    m_asyncProcess = nullptr;
 }
 
 void WaylandBackend::nextLayout()

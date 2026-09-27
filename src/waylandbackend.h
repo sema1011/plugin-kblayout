@@ -225,25 +225,14 @@ private:
     QDBusInterface *m_kwinLayouts{nullptr};
 
     /**
-     * \brief Async process holder for non-blocking IPC.
+     * \brief Async process holder for non-blocking IPC (layout refresh).
      */
     QProcess *m_asyncProcess{nullptr};
 
     /**
-     * \brief Generation counter to prevent race conditions on rapid setLayout() calls.
-     * Each new setLayout() increments the counter; the slot verifies it matches.
-     */
-    int m_asyncProcessGen{0};
-
-    /**
-     * \brief Target layout index for async setLayout.
-     */
-    int m_asyncSetLayoutTarget{-1};
-
-    /**
      * \brief Set to true after initKWin() completes successfully.
-     * Prevents _on_kwin_layoutChanged from starting async processes
-     * during the init phase when the backend might not be ready.
+     * Prevents _on_kwin_layoutChanged from calling readKWinLayouts()
+     * more than once.
      */
     bool m_kwinInitDone{false};
 };
