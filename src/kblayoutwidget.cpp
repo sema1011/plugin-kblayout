@@ -199,31 +199,28 @@ void KbLayoutWidget::updateDisplay()
                 ? m_layoutSyms[m_currentIdx].toUpper()
                 : m_layoutNames[m_currentIdx];
 
-        // Try to load flag icon
+        // Try to load flag icon (same as kbindicator)
         QIcon layoutIcon;
         if (!m_flagPattern.isEmpty()) {
             QString flagFile = m_flagPattern.replace(
                 QStringLiteral("%1"), m_layoutSyms[m_currentIdx].toLower());
             if (QFile::exists(flagFile)) {
                 layoutIcon = QIcon(flagFile);
-                // Verify icon produces a pixmap
-                if (layoutIcon.pixmap(16, 16).isNull()) {
+                // Verify icon produces a pixmap at button's icon size
+                if (layoutIcon.pixmap(m_button->iconSize()).isNull()) {
                     layoutIcon = QIcon();
                 }
             }
         }
 
-        if (!layoutIcon.pixmap(16, 16).isNull()) {
+        if (!layoutIcon.pixmap(m_button->iconSize()).isNull()) {
+            // Icon mode: show flag icon only (like kbindicator)
             m_button->setIcon(layoutIcon);
-            m_button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+            m_button->setToolButtonStyle(Qt::ToolButtonIconOnly);
         } else {
+            // Text mode: show layout symbol
             m_button->setIcon(QIcon());
             m_button->setToolButtonStyle(Qt::ToolButtonTextOnly);
-        }
-
-        if (m_showText) {
-            m_button->setText(display);
-        } else {
             m_button->setText(m_layoutSyms[m_currentIdx].toUpper());
         }
 
