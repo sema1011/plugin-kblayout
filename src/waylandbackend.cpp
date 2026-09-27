@@ -518,15 +518,15 @@ void WaylandBackend::setLayout(int index)
         return;
 
     if (m_compositor == QLatin1String("kwin")) {
-        // Use async D-Bus call to avoid blocking the event loop
-        QDBusMessage msg = QDBusMessage::createMethodCall(
-            QStringLiteral("org.kde.KWin"),
-            QStringLiteral("/Layouts"),
-            QStringLiteral("org.kde.KeyboardLayouts"),
-            QStringLiteral("setLayout"));
-        msg << static_cast<uint>(index);
-
-        QDBusConnection::sessionBus().asyncCall(msg);
+        // Use qdbus6 command to avoid blocking the main thread
+        QProcess process;
+        process.start("qdbus6", {
+            "org.kde.KWin", "/Layouts",
+            "org.kde.KeyboardLayouts.setLayout",
+            QString::number(index)
+        });
+        process.waitForFinished(1000);
+        m_cachedLayoutIdx = index;
         return;
     }
 
