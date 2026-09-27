@@ -527,6 +527,7 @@ void WaylandBackend::setLayout(int index)
         });
         process.waitForFinished(1000);
         m_cachedLayoutIdx = index;
+        m_currentIdx = index;
         return;
     }
 
