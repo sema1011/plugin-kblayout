@@ -196,14 +196,12 @@ void WaylandBackend::readKWinLayouts()
         m_kwinLayouts->interface(),
         QStringLiteral("getLayoutsList"));
 
-    QDBusReply<QDBusMessage> reply =
-        QDBusConnection::sessionBus().call(msg);
-
-    if (reply.isValid()) {
+    QDBusMessage reply = QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
+    if (reply.type() == QDBusMessage::ReplyMessage) {
         m_layoutSyms.clear();
         m_layoutNames.clear();
 
-        QDBusArgument arg = reply.value().argumentAt(0).value<QDBusArgument>();
+        QDBusArgument arg = reply.arguments().at(0).value<QDBusArgument>();
         arg.beginArray();
         while (!arg.atEnd()) {
             QString sym, variant, displayName;
