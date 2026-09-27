@@ -189,7 +189,9 @@ void WaylandBackend::readKWinLayouts()
         return;
 
     // D-Bus returns "a(sss)" — use QDBusInterface::call() with timeout
-    QDBusMessage reply = m_kwinLayouts->call(QStringLiteral("getLayoutsList"));
+    QDBusMessage reply = m_kwinLayouts->call(
+        QStringLiteral("getLayoutsList"),
+        QDBus::Block, 3000);  // 3 second timeout
 
     if (reply.type() == QDBusMessage::ReplyMessage && reply.arguments().size() >= 1) {
         m_layoutSyms.clear();
