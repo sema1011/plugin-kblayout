@@ -39,7 +39,6 @@ set(HEADERS
     src/kblayoutbackend.h
     src/kblayoutsettings.h
     src/kblayoutsettingsdialog.h
-    src/kbdkeeper.h
 )
 
 set(SOURCES
@@ -81,7 +80,7 @@ endif()
 
 if(_enable_x11)
     message(STATUS "kblayout: X11 backend enabled")
-    list(APPEND HEADERS src/x11backend.h)
+    list(APPEND HEADERS src/x11backend.h src/kbdkeeper.h)
     list(APPEND SOURCES src/x11backend.cpp)
     # XKBCommon::X11 provides libxkbcommon-x11, but we also need libxcb-xkb
     # for xcb_xkb_latch_lock_state()
