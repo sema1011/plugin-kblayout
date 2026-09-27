@@ -17,15 +17,15 @@
 
 ## Поддерживаемые композиторы
 
-| Композитор      | Чтение раскладки                  | Переключение                      | Статус       |
-|-----------------|-----------------------------------|-----------------------------------|--------------|
-| X11 (Openbox)   | libxkbcommon-x11 + XCB            | xcb_xkb_latch_lock_state          | Полная       |
-| KWin Wayland    | D-Bus `org.kde.KeyboardLayouts`   | `qdbus6` (async)                  | Полная       |
-| Sway            | `swaymsg -t get_inputs` + config  | `wtype Alt+Shift` (циклическое)   | Частичная    |
-| Hyprland        | `hyprctl -j devices`              | `hyprctl keyword xkb_layout N`    | Полная       |
-| Labwc           | `~/.config/labwc/config` + `setxkbmap` | `wtype` (эмуляция клавиши)  | Частичная    |
-| Wayfire         | `~/.config/wayfire.ini` + `setxkbmap`  | `wtype` (эмуляция клавиши)  | Частичная    |
-| Generic         | `setxkbmap -query` + env vars     | `wtype` / `xdotool`               | Эмуляция     |
+| Композитор      | Чтение раскладки                                  | Переключение                      | Статус       |
+|-----------------|---------------------------------------------------|-----------------------------------|--------------|
+| X11 (Openbox)   | libxkbcommon-x11 + XCB                            | xcb_xkb_latch_lock_state          | Полная       |
+| KWin Wayland    | D-Bus `org.kde.KeyboardLayouts`                   | `qdbus6` (async)                  | Полная       |
+| Sway            | `swaymsg -t get_inputs` + config                  | `wtype Alt+Shift` (циклическое)   | Частичная    |
+| Hyprland        | `hyprctl -j devices`                              | `hyprctl keyword xkb_layout N`    | Полная       |
+| Labwc           | `~/.config/labwc/environment` → config → `setxkbmap` | `wtype`/`xdotool` (эмуляция)  | Частичная    |
+| Wayfire         | `~/.config/wayfire.ini` → `setxkbmap`             | `wtype`/`xdotool` (эмуляция)      | Частичная    |
+| Generic         | `setxkbmap -query` → `XKB_DEFAULT_LAYOUT` env     | `wtype`/`xdotool` (эмуляция)      | Эмуляция     |
 
 ## Зависимости
 
@@ -121,11 +121,14 @@ plugin-kblayout/
 │   ├── kblayoutbackend.h/cpp   # Абстрактный бэкенд
 │   ├── x11backend.h/cpp        # X11: libxkbcommon-x11 + XCB
 │   ├── waylandbackend.h/cpp    # Wayland: KWin/Sway/Hyprland/Labwc/Wayfire
+│   ├── kbdkeeper.h/cpp         # Keeper: Global/Window/Application
 │   ├── kblayoutwidget.h/cpp    # Виджет на панели
 │   ├── kblayoutsettings.h/cpp  # Хранение настроек
-│   └── kblayoutsettingsdialog.h/cpp  # Диалог настроек
+│   ├── kblayoutsettingsdialog.h/cpp/ui  # Диалог настроек
+│   └── kblayoutsettingsdialog.ui
 └── translations/
-    └── kblayout.ts             # Русский перевод
+    ├── template.ts             # Шаблон для переводов
+    └── ru.ts                   # Русский перевод
 ```
 
 ## Лицензия
