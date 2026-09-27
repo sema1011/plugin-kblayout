@@ -72,8 +72,7 @@ sudo cp lxqt-panel/libkblayout.so /usr/lib/lxqt-panel/
 ## Настройки
 
 ### Отображение
-- **Показывать текст** — отображение кода раскладки (EN, RU)
-- **Иконки-флаги** — переключатель отображения флагов
+- **Иконки-флаги** — переключатель: включены = показываются флаги, выключены = показывается текст (EN, RU)
 - **Паттерн иконок** — путь к каталогу с флагами или паттерн с `%1`
   - Каталог: `/usr/share/sddm/flags` → автоматически `/usr/share/sddm/flags/us.png`
   - Паттерн: `/usr/share/sddm/flags/%1.png` → `/usr/share/sddm/flags/us.png`
@@ -124,7 +123,7 @@ plugin-kblayout/
 │   ├── kbdkeeper.h/cpp         # Keeper: Global/Window/Application
 │   ├── kblayoutwidget.h/cpp    # Виджет на панели
 │   ├── kblayoutsettings.h/cpp  # Хранение настроек
-│   ├── kblayoutsettingsdialog.h/cpp/ui  # Диалог настроек
+│   ├── kblayoutsettingsdialog.h/cpp       # Диалог настроек
 │   └── kblayoutsettingsdialog.ui
 └── translations/
     ├── template.ts             # Шаблон для переводов
