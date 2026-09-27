@@ -134,7 +134,8 @@ install(TARGETS ${PROJECT_NAME}
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/lxqt-panel"
 )
 
-# Install desktop file
+# Install desktop file (install as .desktop, not .desktop.in)
 install(FILES resources/kblayout.desktop.in
+    RENAME kblayout.desktop
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/lxqt-panel"
 )
