@@ -198,6 +198,7 @@ void KbLayout::settingsChanged()
     m_widget.setShowNum(m_settings.showNum());
     m_widget.setShowScroll(m_settings.showScroll());
     m_widget.setFontSize(m_settings.fontSize());
+    m_widget.setFlagPattern(m_settings.flagPattern());
 
     m_widget.setup();
     updateWidgetFromBackend();

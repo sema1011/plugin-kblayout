@@ -27,6 +27,7 @@
 
 #include "ui_kblayoutsettingsdialog.h"
 #include <QPushButton>
+#include <QProcess>
 
 KbLayoutSettingsDialog::KbLayoutSettingsDialog(KbLayoutSettings *settings, QWidget *parent) :
     QDialog(parent),
@@ -46,6 +47,12 @@ KbLayoutSettingsDialog::KbLayoutSettingsDialog(KbLayoutSettings *settings, QWidg
             onApply();
         }
     });
+
+    // Connect Configure layouts button
+    connect(ui->btnConfigureLayouts, &QPushButton::clicked, this, [this]() {
+        QProcess::startDetached(QStringLiteral("lxqt-config-input"),
+                               {QStringLiteral("--show-page"), QStringLiteral("Keyboard Layout")});
+    });
 }
 
 KbLayoutSettingsDialog::~KbLayoutSettingsDialog() = default;
@@ -64,6 +71,7 @@ void KbLayoutSettingsDialog::loadSettings()
     ui->chkShowCaps->setChecked(m_settings->showCaps());
     ui->chkShowNum->setChecked(m_settings->showNum());
     ui->chkShowScroll->setChecked(m_settings->showScroll());
+    ui->txtFlagPattern->setText(m_settings->flagPattern());
     ui->spinFontSize->setValue(m_settings->fontSize());
     ui->chkNotification->setChecked(m_settings->showNotification());
 }
@@ -77,6 +85,7 @@ void KbLayoutSettingsDialog::saveSettings()
     m_settings->setShowCaps(ui->chkShowCaps->isChecked());
     m_settings->setShowNum(ui->chkShowNum->isChecked());
     m_settings->setShowScroll(ui->chkShowScroll->isChecked());
+    m_settings->setFlagPattern(ui->txtFlagPattern->text());
     m_settings->setFontSize(ui->spinFontSize->value());
     m_settings->setShowNotification(ui->chkNotification->isChecked());
 }

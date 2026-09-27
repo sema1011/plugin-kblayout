@@ -35,6 +35,7 @@
 #include <QAction>
 #include <QScreen>
 #include <QGuiApplication>
+#include <QFile>
 #include <lxqt/ilxqtpanel.h>
 
 KbLayoutWidget::KbLayoutWidget(QWidget *parent) :
@@ -172,6 +173,12 @@ void KbLayoutWidget::setShowText(bool show)
     updateDisplay();
 }
 
+void KbLayoutWidget::setFlagPattern(const QString &pattern)
+{
+    m_flagPattern = pattern;
+    updateDisplay();
+}
+
 void KbLayoutWidget::onLayoutChanged(int layoutIndex)
 {
     m_currentIdx = layoutIndex;
@@ -184,6 +191,28 @@ void KbLayoutWidget::updateDisplay()
         QString display = m_layoutNames.isEmpty()
                 ? m_layoutSyms[m_currentIdx].toUpper()
                 : m_layoutNames[m_currentIdx];
+
+        // Try to load flag icon
+        QIcon layoutIcon;
+        if (!m_flagPattern.isEmpty()) {
+            QString flagFile = m_flagPattern.replace(
+                QStringLiteral("%1"), m_layoutSyms[m_currentIdx].toLower());
+            if (QFile::exists(flagFile)) {
+                layoutIcon = QIcon(flagFile);
+                // Verify icon produces a pixmap
+                if (layoutIcon.pixmap(16, 16).isNull()) {
+                    layoutIcon = QIcon();
+                }
+            }
+        }
+
+        if (!layoutIcon.pixmap(16, 16).isNull()) {
+            m_button->setIcon(layoutIcon);
+            m_button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        } else {
+            m_button->setIcon(QIcon());
+            m_button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        }
 
         if (m_showText) {
             m_button->setText(display);

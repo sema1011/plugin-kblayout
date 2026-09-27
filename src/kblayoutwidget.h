@@ -93,6 +93,11 @@ public:
      */
     void setShowText(bool show);
 
+    /**
+     * \brief Set flag icon pattern (%1 is replaced by layout sym).
+     */
+    void setFlagPattern(const QString &pattern);
+
 public slots:
     /**
      * \brief Update display when layout changes.
@@ -137,6 +142,7 @@ private:
     bool m_showNum{false};
     bool m_showScroll{false};
     int m_fontSize{9};
+    QString m_flagPattern;
 
     // LED indicators
     QLabel *m_capsLabel{nullptr};

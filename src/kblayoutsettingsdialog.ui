@@ -44,15 +44,33 @@
         </property>
        </widget>
       </item>
-      <item>
-       <widget class="QCheckBox" name="chkShowScroll">
-        <property name="text">
-         <string>Show Scroll Lock indicator</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="fontSizeLayout">
+       <item>
+        <widget class="QCheckBox" name="chkShowScroll">
+         <property name="text">
+          <string>Show Scroll Lock indicator</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="flagPatternLayout">
+         <item>
+          <widget class="QLabel" name="labelFlagPattern">
+           <property name="text">
+            <string>Flag icon pattern:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="txtFlagPattern">
+           <property name="placeholderText">
+            <string>e.g. /usr/share/pixmaps/flags/%1.png</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="fontSizeLayout">
         <item>
          <widget class="QLabel" name="labelFontSize">
           <property name="text">
@@ -83,18 +101,25 @@
      <property name="title">
       <string>Behavior</string>
      </property>
-     <layout class="QVBoxLayout" name="behaviorLayout">
-      <item>
-       <widget class="QCheckBox" name="chkNotification">
-        <property name="text">
-         <string>Show notification on layout switch</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
+      <layout class="QVBoxLayout" name="behaviorLayout">
+       <item>
+        <widget class="QCheckBox" name="chkNotification">
+         <property name="text">
+          <string>Show notification on layout switch</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnConfigureLayouts">
+         <property name="text">
+          <string>Configure layouts...</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
     </widget>
    </item>
    <item>

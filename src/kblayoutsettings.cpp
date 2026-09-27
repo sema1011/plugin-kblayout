@@ -64,6 +64,12 @@ int KbLayoutSettings::fontSize() const
     return m_settings->value(QStringLiteral("fontSize"), 9).toInt();
 }
 
+QString KbLayoutSettings::flagPattern() const
+{
+    if (!m_settings) return QString();
+    return m_settings->value(QStringLiteral("flagPattern"), QString()).toString();
+}
+
 bool KbLayoutSettings::showNotification() const
 {
     if (!m_settings) return true;
@@ -98,6 +104,12 @@ void KbLayoutSettings::setFontSize(int size)
 {
     if (m_settings)
         m_settings->setValue(QStringLiteral("fontSize"), size);
+}
+
+void KbLayoutSettings::setFlagPattern(const QString &pattern)
+{
+    if (m_settings)
+        m_settings->setValue(QStringLiteral("flagPattern"), pattern);
 }
 
 void KbLayoutSettings::setShowNotification(bool show)
