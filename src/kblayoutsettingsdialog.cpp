@@ -66,7 +66,6 @@ void KbLayoutSettingsDialog::loadSettings()
     if (!m_settings)
         return;
 
-    ui->chkShowText->setChecked(m_settings->showText());
     ui->chkShowCaps->setChecked(m_settings->showCaps());
     ui->chkShowNum->setChecked(m_settings->showNum());
     ui->chkShowScroll->setChecked(m_settings->showScroll());
@@ -81,7 +80,6 @@ void KbLayoutSettingsDialog::saveSettings()
     if (!m_settings)
         return;
 
-    m_settings->setShowText(ui->chkShowText->isChecked());
     m_settings->setShowCaps(ui->chkShowCaps->isChecked());
     m_settings->setShowNum(ui->chkShowNum->isChecked());
     m_settings->setShowScroll(ui->chkShowScroll->isChecked());

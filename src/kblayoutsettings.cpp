@@ -34,12 +34,6 @@ void KbLayoutSettings::init(PluginSettings *settings)
     m_settings = settings;
 }
 
-bool KbLayoutSettings::showText() const
-{
-    if (!m_settings) return true;
-    return m_settings->value(QStringLiteral("showText"), true).toBool();
-}
-
 bool KbLayoutSettings::showCaps() const
 {
     if (!m_settings) return false;
@@ -80,12 +74,6 @@ bool KbLayoutSettings::showNotification() const
 {
     if (!m_settings) return true;
     return m_settings->value(QStringLiteral("showNotification"), true).toBool();
-}
-
-void KbLayoutSettings::setShowText(bool show)
-{
-    if (m_settings)
-        m_settings->setValue(QStringLiteral("showText"), show);
 }
 
 void KbLayoutSettings::setShowCaps(bool show)

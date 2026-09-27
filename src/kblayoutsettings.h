@@ -47,7 +47,6 @@ public:
     void init(PluginSettings *settings);
 
     // Display options
-    bool showText() const;
     bool showCaps() const;
     bool showNum() const;
     bool showScroll() const;
@@ -59,7 +58,6 @@ public:
     bool showNotification() const;
 
     // Setters
-    void setShowText(bool show);
     void setShowCaps(bool show);
     void setShowNum(bool show);
     void setShowScroll(bool show);

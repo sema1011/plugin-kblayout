@@ -172,12 +172,6 @@ void KbLayoutWidget::setFontSize(int size)
     updateDisplay();
 }
 
-void KbLayoutWidget::setShowText(bool show)
-{
-    m_showText = show;
-    updateDisplay();
-}
-
 void KbLayoutWidget::setFlagPattern(const QString &pattern)
 {
     m_flagPattern = pattern;
@@ -224,11 +218,11 @@ void KbLayoutWidget::updateDisplay()
         }
 
         if (m_showFlags && !m_flagPattern.isEmpty() && !layoutIcon.pixmap(24, 24).isNull()) {
-            // Icon mode: show flag icon only
+            // Flag icon mode: show icon
             m_button->setIcon(layoutIcon);
             m_button->setToolButtonStyle(Qt::ToolButtonIconOnly);
         } else {
-            // Always show text as fallback (m_showText is the default, not a hard rule)
+            // Text mode: show layout symbol (default when flags disabled)
             m_button->setIcon(QIcon());
             m_button->setToolButtonStyle(Qt::ToolButtonTextOnly);
             m_button->setText(m_layoutSyms[m_currentIdx].toUpper());

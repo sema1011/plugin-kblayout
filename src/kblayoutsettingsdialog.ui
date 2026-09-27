@@ -19,48 +19,38 @@
      <property name="title">
       <string>Display</string>
      </property>
-     <layout class="QVBoxLayout" name="displayLayout">
-      <item>
-       <widget class="QCheckBox" name="chkShowText">
-        <property name="text">
-         <string>Show layout text (e.g. EN, RU)</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkShowCaps">
-        <property name="text">
-         <string>Show Caps Lock indicator</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkShowNum">
-        <property name="text">
-         <string>Show Num Lock indicator</string>
-        </property>
-       </widget>
-      </item>
-        <item>
-         <widget class="QCheckBox" name="chkShowScroll">
-          <property name="text">
-           <string>Show Scroll Lock indicator</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="chkShowFlags">
-          <property name="text">
-           <string>Show flag icons</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
+      <layout class="QVBoxLayout" name="displayLayout">
+       <item>
+        <widget class="QCheckBox" name="chkShowCaps">
+         <property name="text">
+          <string>Show Caps Lock indicator</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="chkShowNum">
+         <property name="text">
+          <string>Show Num Lock indicator</string>
+         </property>
+        </widget>
+       </item>
+         <item>
+          <widget class="QCheckBox" name="chkShowScroll">
+           <property name="text">
+            <string>Show Scroll Lock indicator</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="chkShowFlags">
+           <property name="text">
+            <string>Show flag icons</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
         <item>
          <layout class="QHBoxLayout" name="flagPatternLayout">
          <item>

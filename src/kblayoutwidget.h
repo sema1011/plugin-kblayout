@@ -91,16 +91,7 @@ public:
     /**
      * \brief Set whether to show layout text.
      */
-    void setShowText(bool show);
-
-    /**
-     * \brief Set flag icon pattern (%1 is replaced by layout sym).
-     */
     void setFlagPattern(const QString &pattern);
-
-    /**
-     * \brief Enable or disable flag icons.
-     */
     void setShowFlags(bool show);
 
 public slots:
@@ -141,7 +132,6 @@ private:
     QStringList m_layoutSyms;
     QStringList m_layoutNames;
     int m_currentIdx{-1};
-    bool m_showText{true};
     bool m_showCaps{false};
     bool m_showNum{false};
     bool m_showScroll{false};
