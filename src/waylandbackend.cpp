@@ -521,7 +521,8 @@ void WaylandBackend::setLayout(int index)
         if (!m_kwinLayouts)
             return;
 
-        QDBusReply<void> reply = m_kwinLayouts->call(QStringLiteral("setLayout"), index);
+        QDBusReply<bool> reply = m_kwinLayouts->call(
+            QStringLiteral("setLayout"), static_cast<uint>(index));
         if (!reply.isValid()) {
             qWarning() << "kblayout: KWin setLayout error:" << reply.error().message();
         }
