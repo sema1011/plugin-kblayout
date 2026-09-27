@@ -306,13 +306,6 @@ void KbLayoutWidget::buildContextMenu()
 
 QPoint KbLayoutWidget::popupPosition()
 {
-    // Try panel's calculatePopupWindowPos first (proper Wayland support)
-    if (m_panel) {
-        QRect rect = m_panel->calculatePopupWindowPos(
-            geometry().bottomRight(), m_menu->sizeHint());
-        return rect.topLeft();
-    }
-
-    // Fallback: show below the widget
-    return mapToGlobal(QPoint(0, height()));
+    // Show menu below the button at its global position
+    return m_button->mapToGlobal(QPoint(0, m_button->height()));
 }
