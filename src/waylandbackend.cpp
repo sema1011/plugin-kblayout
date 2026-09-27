@@ -137,15 +137,20 @@ bool WaylandBackend::initKWin()
 
         if (kbIface.isValid()) {
             qInfo() << "kblayout: Using org.freedesktop.Implementations.Keyboards";
-            QDBusReply<QList<QVariant>> reply =
+            QDBusReply<QVariant> reply =
                 kbIface.call(QStringLiteral("GetLayoutsList"));
             if (reply.isValid()) {
                 m_layoutSyms.clear();
                 m_layoutNames.clear();
-                for (const auto &layout : reply.value()) {
-                    if (layout.size() >= 2) {
-                        m_layoutNames.append(layout[0].toString());
-                        m_layoutSyms.append(layout[1].toString());
+                // D-Bus returns QList<QList<QVariant>>, which becomes
+                // QVariant -> QVariantList -> QList<QVariant>
+                QVariantList outer = reply.value().toList();
+                for (const auto &outerItem : outer) {
+                    QVariantList inner = outerItem.toList();
+                    if (inner.size() >= 3) {
+                        // [symbol, variant, display_name]
+                        m_layoutSyms.append(inner[0].toString());
+                        m_layoutNames.append(inner[2].toString());
                     }
                 }
                 m_valid = !m_layoutSyms.isEmpty();
@@ -183,16 +188,20 @@ void WaylandBackend::readKWinLayouts()
     if (!m_kwinLayouts)
         return;
 
-    QDBusReply<QList<QList<QVariant>>> reply =
+    QDBusReply<QVariant> reply =
         m_kwinLayouts->call(QStringLiteral("getLayoutsList"));
     if (reply.isValid()) {
         m_layoutSyms.clear();
         m_layoutNames.clear();
-        for (const auto &layout : reply.value()) {
+        // D-Bus returns QList<QList<QVariant>>, which becomes
+        // QVariant -> QVariantList -> QList<QVariant>
+        QVariantList outer = reply.value().toList();
+        for (const auto &outerItem : outer) {
+            QVariantList inner = outerItem.toList();
             // D-Bus returns: [symbol, variant, display_name]
-            if (layout.size() >= 3) {
-                m_layoutSyms.append(layout[0].toString());    // sym (us, ru)
-                m_layoutNames.append(layout[2].toString());   // display name
+            if (inner.size() >= 3) {
+                m_layoutSyms.append(inner[0].toString());    // sym (us, ru)
+                m_layoutNames.append(inner[2].toString());   // display name
             }
         }
     }
