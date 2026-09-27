@@ -613,8 +613,6 @@ void WaylandBackend::_on_led_poll_timer()
 
 void WaylandBackend::readLedStatesFromXkb()
 {
-    qDebug() << "kblayout: LED polling timer triggered";
-    
     // Read LED states from various sources
     bool caps = false, num = false, scroll = false;
 
@@ -634,7 +632,6 @@ void WaylandBackend::readLedStatesFromXkb()
             if (brightness.open(QIODevice::ReadOnly)) {
                 QString state = QString::fromUtf8(brightness.readAll()).trimmed();
                 caps = (state.toInt() > 0);
-                qDebug() << "kblayout: CapsLED" << dir << "/brightness =" << state << "->" << caps;
             }
             break;
         }
@@ -655,7 +652,6 @@ void WaylandBackend::readLedStatesFromXkb()
             if (brightness.open(QIODevice::ReadOnly)) {
                 QString state = QString::fromUtf8(brightness.readAll()).trimmed();
                 num = (state.toInt() > 0);
-                qDebug() << "kblayout: NumLED" << dir << "/brightness =" << state << "->" << num;
             }
             break;
         }
@@ -676,7 +672,6 @@ void WaylandBackend::readLedStatesFromXkb()
             if (brightness.open(QIODevice::ReadOnly)) {
                 QString state = QString::fromUtf8(brightness.readAll()).trimmed();
                 scroll = (state.toInt() > 0);
-                qDebug() << "kblayout: ScrollLED" << dir << "/brightness =" << state << "->" << scroll;
             }
             break;
         }
@@ -687,7 +682,6 @@ void WaylandBackend::readLedStatesFromXkb()
         m_ledCaps = caps;
         m_ledNum = num;
         m_ledScroll = scroll;
-        qDebug() << "kblayout: LED states changed:" << "caps=" << caps << "num=" << num << "scroll=" << scroll;
         emit ledStateChanged(caps, num, scroll);
     }
 }
