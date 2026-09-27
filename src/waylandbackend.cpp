@@ -189,9 +189,10 @@ void WaylandBackend::readKWinLayouts()
         m_layoutSyms.clear();
         m_layoutNames.clear();
         for (const auto &layout : reply.value()) {
-            if (layout.size() >= 2) {
-                m_layoutNames.append(layout[0].toString());  // display name
-                m_layoutSyms.append(layout[1].toString());    // sym (e.g. "us", "ru")
+            // D-Bus returns: [symbol, variant, display_name]
+            if (layout.size() >= 3) {
+                m_layoutSyms.append(layout[0].toString());    // sym (us, ru)
+                m_layoutNames.append(layout[2].toString());   // display name
             }
         }
     }
