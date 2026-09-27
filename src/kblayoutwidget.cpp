@@ -51,8 +51,17 @@ KbLayoutWidget::KbLayoutWidget(QWidget *parent) :
     m_button = new QToolButton(this);
     m_button->setToolButtonStyle(Qt::ToolButtonTextOnly);
     m_button->setFont(QFont(QStringLiteral("Sans"), m_fontSize, QFont::Bold));
+    m_button->setContextMenuPolicy(Qt::NoContextMenu);
     m_menu = new QMenu(this);
     mainLayout->addWidget(m_button);
+
+    // Connect button clicks
+    connect(m_button, &QToolButton::clicked, this, [this]() {
+        emit layoutNextRequested();
+    });
+
+    // Install event filter for right-click menu
+    m_button->installEventFilter(this);
 
     // LED indicators (initially hidden)
     m_capsLabel = new QLabel(QStringLiteral("Caps"), this);
@@ -236,18 +245,19 @@ void KbLayoutWidget::updateDisplay()
     }
 }
 
-void KbLayoutWidget::mousePressEvent(QMouseEvent *event)
+bool KbLayoutWidget::eventFilter(QObject *obj, QEvent *event)
 {
-    if (event->button() == Qt::LeftButton) {
-        // Left click: switch to next layout
-        emit layoutNextRequested();
-    } else if (event->button() == Qt::RightButton) {
-        // Right click: show context menu
-        buildContextMenu();
-        QPoint pos = popupPosition();
-        m_menu->exec(pos);
+    if (obj == m_button && event->type() == QEvent::MouseButtonRelease) {
+        auto *me = static_cast<QMouseEvent *>(event);
+        if (me->button() == Qt::RightButton) {
+            // Right click: show context menu
+            buildContextMenu();
+            QPoint pos = popupPosition();
+            m_menu->exec(pos);
+            return true;
+        }
     }
-    QWidget::mousePressEvent(event);
+    return QWidget::eventFilter(obj, event);
 }
 
 void KbLayoutWidget::buildContextMenu()

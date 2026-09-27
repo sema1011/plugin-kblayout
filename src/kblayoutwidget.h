@@ -122,8 +122,8 @@ signals:
      */
     void layoutSelected(int index);
 
- protected:
-    void mousePressEvent(QMouseEvent *event) override;
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
     void updateDisplay();
