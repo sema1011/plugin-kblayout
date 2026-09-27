@@ -223,8 +223,8 @@ void KbLayoutWidget::updateDisplay()
             }
         }
 
-        if (!layoutIcon.pixmap(24, 24).isNull()) {
-            // Icon mode: show flag icon only (like kbindicator)
+        if (m_showFlags && !m_flagPattern.isEmpty() && !layoutIcon.pixmap(24, 24).isNull()) {
+            // Icon mode: show flag icon only
             m_button->setIcon(layoutIcon);
             m_button->setToolButtonStyle(Qt::ToolButtonIconOnly);
         } else if (m_showText) {
