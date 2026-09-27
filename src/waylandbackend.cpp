@@ -211,7 +211,7 @@ void WaylandBackend::readKWinLayouts()
         // Parse qdbus6 --literal output:
         // [Argument: a(sss) {[Argument: (sss) "us", "", "Английская (США)"], [Argument: (sss) "ru", "", "Русская"]}]
         // Extract all "sym", "", "Display Name" triplets
-        QRegularExpression re(R"("(\w+)",\s*"([^"]*)",\s*"([^"]*)")");
+        QRegularExpression re("\"(\\w+)\",\\s*\"([^\"]*)\",\\s*\"([^\"]*)\"");
         QRegularExpressionMatchIterator it = re.globalMatch(outputStr);
 
         m_layoutSyms.clear();
