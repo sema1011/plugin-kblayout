@@ -15,15 +15,11 @@ if(NOT DEFINED KBLAYOUT_WAYLAND)
 endif()
 
 # Qt6
-find_package(Qt6 REQUIRED COMPONENTS Widgets Xml DBus)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Xml DBus Tools)
 qt_standard_project_setup()
 
 # Find lrelease tool
-find_program(QT_LRELEASE_EXECUTABLE lrelease HINTS ${Qt6_DIR}/../../../bin)
-if(NOT QT_LRELEASE_EXECUTABLE)
-    # Try Qt6 lrelease
-    find_program(QT_LRELEASE_EXECUTABLE lrelease)
-endif()
+find_program(QT_LRELEASE_EXECUTABLE lrelease)
 if(NOT QT_LRELEASE_EXECUTABLE)
     message(WARNING "lrelease not found — translations will not be compiled")
 endif()
