@@ -233,10 +233,10 @@ void KbLayoutWidget::updateDisplay()
             m_button->setToolButtonStyle(Qt::ToolButtonTextOnly);
             m_button->setText(m_layoutSyms[m_currentIdx].toUpper());
         } else {
-            // Neither icon nor text: hide button text
+            // Fallback: always show text if no icon available
             m_button->setIcon(QIcon());
-            m_button->setToolButtonStyle(Qt::ToolButtonIconOnly);
-            m_button->setText(QString());
+            m_button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+            m_button->setText(m_layoutSyms[m_currentIdx].toUpper());
         }
 
         // Tooltip: full layout info + controls
