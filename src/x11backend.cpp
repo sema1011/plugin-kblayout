@@ -207,6 +207,10 @@ void X11Backend::parseEvdevXml()
             .firstChild().toText().data();
         QString name = config.firstChildElement(QStringLiteral("name"))
             .firstChild().toText().data();
+
+        // Store: displayName (description) -> shortSymbol (name)
+        m_langCache.insert(desc, name);
+        // Also store: shortSymbol -> displayName (for fallback)
         m_langCache.insert(name, desc);
 
         // Also cache variants: variantName -> layout description
@@ -239,21 +243,18 @@ void X11Backend::readKbdInfo()
             QString displayName = QString::fromUtf8(name);
             m_layoutNames.append(displayName);
 
-            // Find short symbol from langCache (reverse lookup)
-            QString shortSym;
-            for (auto it = m_langCache.constBegin(); it != m_langCache.constEnd(); ++it) {
-                if (it.value() == displayName) {
-                    shortSym = it.key();
-                    break;
-                }
+            // Direct lookup: displayName -> shortSymbol
+            auto it = m_langCache.find(displayName);
+            if (it != m_langCache.constEnd()) {
+                m_layoutSyms.append(it.value());
+            } else {
+                qDebug() << "kblayout: xkb layout name not found in cache:" << displayName;
+                m_layoutSyms.append(displayName.toUpper());
             }
-            // Fallback: use upper-case display name
-            if (shortSym.isEmpty())
-                shortSym = displayName.toUpper();
-
-            m_layoutSyms.append(shortSym);
         }
     }
+    qDebug() << "kblayout: X11 layouts syms:" << m_layoutSyms << "names:" << m_layoutNames;
+    qDebug() << "kblayout: langCache keys:" << m_langCache.keys();
 }
 
 QStringList X11Backend::layouts() const
