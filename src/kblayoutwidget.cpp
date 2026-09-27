@@ -113,8 +113,6 @@ void KbLayoutWidget::setCurrentLayout(int index)
 
 void KbLayoutWidget::setLedState(bool caps, bool num, bool scroll)
 {
-    bool changed = (caps != m_capsActive || num != m_numActive || scroll != m_scrollActive);
-
     m_capsActive = caps;
     m_numActive = num;
     m_scrollActive = scroll;
