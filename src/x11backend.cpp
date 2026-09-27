@@ -236,15 +236,22 @@ void X11Backend::readKbdInfo()
     for (xkb_layout_index_t i = 0; i < count; ++i) {
         const char *name = xkb_keymap_layout_get_name(static_cast<xkb_keymap*>(m_keymap), i);
         if (name) {
-            QString sym = QString::fromUtf8(name);
-            m_layoutSyms.append(sym);
+            QString displayName = QString::fromUtf8(name);
+            m_layoutNames.append(displayName);
 
-            auto it = m_langCache.find(sym);
-            if (it != m_langCache.end()) {
-                m_layoutNames.append(it.value());
-            } else {
-                m_layoutNames.append(sym.toUpper());
+            // Find short symbol from langCache (reverse lookup)
+            QString shortSym;
+            for (auto it = m_langCache.constBegin(); it != m_langCache.constEnd(); ++it) {
+                if (it.value() == displayName) {
+                    shortSym = it.key();
+                    break;
+                }
             }
+            // Fallback: use upper-case display name
+            if (shortSym.isEmpty())
+                shortSym = displayName.toUpper();
+
+            m_layoutSyms.append(shortSym);
         }
     }
 }
