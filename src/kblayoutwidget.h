@@ -129,8 +129,10 @@ protected:
 private:
     void updateDisplay();
     void buildContextMenu();
+    QPoint popupPosition();
 
     QToolButton *m_button{nullptr};
+    QMenu *m_menu{nullptr};
     ILXQtPanel *m_panel{nullptr};
     QStringList m_layoutSyms;
     QStringList m_layoutNames;
