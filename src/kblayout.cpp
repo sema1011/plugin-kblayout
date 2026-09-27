@@ -192,10 +192,12 @@ void KbLayout::settingsChanged()
 {
     m_settings.init(settings());
 
-    // Apply LED settings
+    // Apply display settings
+    m_widget.setShowText(m_settings.showText());
     m_widget.setShowCaps(m_settings.showCaps());
     m_widget.setShowNum(m_settings.showNum());
     m_widget.setShowScroll(m_settings.showScroll());
+    m_widget.setFontSize(m_settings.fontSize());
 
     m_widget.setup();
     updateWidgetFromBackend();

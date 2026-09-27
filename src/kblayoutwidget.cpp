@@ -157,6 +157,21 @@ void KbLayoutWidget::setShowScroll(bool show)
         m_scrollLabel->setVisible(false);
 }
 
+void KbLayoutWidget::setFontSize(int size)
+{
+    if (size <= 0)
+        size = 9;
+    m_fontSize = size;
+    m_button->setFont(QFont(QStringLiteral("Sans"), m_fontSize, QFont::Bold));
+    updateDisplay();
+}
+
+void KbLayoutWidget::setShowText(bool show)
+{
+    m_showText = show;
+    updateDisplay();
+}
+
 void KbLayoutWidget::onLayoutChanged(int layoutIndex)
 {
     m_currentIdx = layoutIndex;

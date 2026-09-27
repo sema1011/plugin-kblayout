@@ -145,6 +145,11 @@ private:
 
     // KWin D-Bus
     QDBusInterface *m_kwinLayouts{nullptr};
+
+    /**
+     * \brief Cached current layout index (from D-Bus signal).
+     */
+    int m_cachedLayoutIdx{0};
 };
 
 #endif // WAYLANDBACKEND_H

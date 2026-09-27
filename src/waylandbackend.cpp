@@ -122,6 +122,11 @@ bool WaylandBackend::initKWin()
             this,
             SLOT(_on_kwin_layoutChanged(uint)));
 
+        // Initialize cached layout index from D-Bus
+        QDBusReply<int> reply = m_kwinLayouts->call(QStringLiteral("getLayout"));
+        if (reply.isValid())
+            m_cachedLayoutIdx = reply.value();
+
         // Start async read — m_valid will be set in _on_kwin_layouts_reply
         readKWinLayouts();
 
@@ -499,13 +504,8 @@ QStringList WaylandBackend::layouts() const
 int WaylandBackend::currentLayout() const
 {
     if (m_compositor == QLatin1String("kwin")) {
-        if (!m_kwinLayouts)
-            return 0;
-
-        QDBusReply<int> reply = m_kwinLayouts->call(QStringLiteral("getLayout"));
-        if (reply.isValid())
-            return reply.value();
-        return 0;
+        // Use cached index from D-Bus signal (non-blocking)
+        return m_cachedLayoutIdx;
     }
 
     // For polling-based compositors, return cached index
@@ -572,9 +572,10 @@ void WaylandBackend::nextLayout()
 
 void WaylandBackend::_on_kwin_layoutChanged(uint index)
 {
-    Q_UNUSED(index)
+    // Cache the index from D-Bus signal (avoids blocking D-Bus call)
+    m_cachedLayoutIdx = static_cast<int>(index);
     readKWinLayouts();
-    emit layoutChanged(currentLayout());
+    emit layoutChanged(m_cachedLayoutIdx);
 }
 
 void WaylandBackend::_on_poll_timer()

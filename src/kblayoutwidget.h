@@ -83,6 +83,16 @@ public:
     void setShowNum(bool show);
     void setShowScroll(bool show);
 
+    /**
+     * \brief Set font size for the layout display.
+     */
+    void setFontSize(int size);
+
+    /**
+     * \brief Set whether to show layout text.
+     */
+    void setShowText(bool show);
+
 public slots:
     /**
      * \brief Update display when layout changes.
