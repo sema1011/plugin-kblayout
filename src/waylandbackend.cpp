@@ -39,6 +39,8 @@
 #include <QRegularExpression>
 #include <QFile>
 #include <QTextStream>
+#include <QStandardPaths>
+#include <QSettings>
 
 WaylandBackend::WaylandBackend(QObject *parent) :
     KbLayoutBackend(parent)
@@ -126,9 +128,19 @@ bool WaylandBackend::initKWin()
         SLOT(_on_kwin_layoutChanged(uint)));
 
     readKWinLayouts();
-    qInfo() << "kblayout: KWin backend initialized,"
-            << m_layoutSyms.size() << "layouts found";
-    return true;
+    m_valid = !m_layoutSyms.isEmpty();
+    if (!m_valid) {
+        // Fallback: read from kxkbrc config
+        readKXkbConfig();
+        m_valid = !m_layoutSyms.isEmpty();
+    }
+    if (m_valid) {
+        qInfo() << "kblayout: KWin backend initialized,"
+                << m_layoutSyms.size() << "layouts found";
+    } else {
+        qWarning() << "kblayout: KWin backend initialized but no layouts found";
+    }
+    return m_valid;
 }
 
 void WaylandBackend::readKWinLayouts()
@@ -148,6 +160,47 @@ void WaylandBackend::readKWinLayouts()
             }
         }
     }
+}
+
+void WaylandBackend::readKXkbConfig()
+{
+    // Read from kxkbrc config (KDE keyboard settings)
+    QString configPath = QStandardPaths::locate(
+        QStandardPaths::ConfigLocation,
+        QStringLiteral("kxkbrc"));
+    if (configPath.isEmpty())
+        return;
+
+    QSettings settings(configPath, QSettings::IniFormat);
+    settings.beginGroup(QStringLiteral("Layout"));
+
+    QString layout = settings.value(QStringLiteral("LayoutList")).toString();
+    if (layout.isEmpty())
+        return;
+
+    // Parse comma-separated layout list (e.g. "us,ru,de")
+    const auto parts = layout.split(',', Qt::SkipEmptyParts);
+    m_layoutSyms.clear();
+    m_layoutNames.clear();
+
+    for (const auto &sym : parts) {
+        m_layoutSyms.append(sym.trimmed().toLower());
+        // Try to get display name from variant
+        QString variant = settings.value(
+            QStringLiteral("VariantList") + '_' + sym.trimmed()).toString();
+        m_layoutNames.append(variant.isEmpty() ? sym.trimmed().toUpper()
+                                                : variant.trimmed());
+    }
+
+    // Read current layout index
+    QString current = settings.value(QStringLiteral("Use")).toString();
+    if (!current.isEmpty()) {
+        int idx = parts.indexOf(current.trimmed());
+        if (idx >= 0)
+            m_currentIdx = idx;
+    }
+
+    settings.endGroup();
 }
 
 // ============================================================================
