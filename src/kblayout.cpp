@@ -63,9 +63,9 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
     QString locale = QLocale::system().name();  // e.g. "ru_RU", "en_US"
     QString translationPath = LXQT_SHARE_DIR "/translations/";
     
-    // Try locale-specific translation (e.g. ru_RU -> ru.ts)
-    QString tsFile = locale.split('_').first() + QStringLiteral(".ts");  // "ru"
-    if (m_translator->load(tsFile, translationPath)) {
+    // Try locale-specific translation (e.g. ru_RU -> ru.qm)
+    QString qmFile = locale.split('_').first();  // "ru"
+    if (m_translator->load(qmFile, translationPath)) {
         QApplication::installTranslator(m_translator);
     }
     m_settings.init(settings());

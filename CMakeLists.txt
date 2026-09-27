@@ -160,13 +160,12 @@ endforeach()
 # Create a target to build all translations
 if(TRANSLATION_QM_FILES)
     add_custom_target(translations ALL DEPENDS ${TRANSLATION_QM_FILES})
+endif()
+
+# Install compiled .qm files
+if(TRANSLATION_QM_FILES)
     install(FILES ${TRANSLATION_QM_FILES}
         DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/translations"
     )
 endif()
-
-# Install translations
-install(FILES translations/ru.ts
-    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/translations"
-)
 
