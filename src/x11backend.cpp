@@ -248,13 +248,10 @@ void X11Backend::readKbdInfo()
             if (it != m_langCache.constEnd()) {
                 m_layoutSyms.append(it.value());
             } else {
-                qDebug() << "kblayout: xkb layout name not found in cache:" << displayName;
                 m_layoutSyms.append(displayName.toUpper());
             }
         }
     }
-    qDebug() << "kblayout: X11 layouts syms:" << m_layoutSyms << "names:" << m_layoutNames;
-    qDebug() << "kblayout: langCache keys:" << m_langCache.keys();
 }
 
 QStringList X11Backend::layouts() const

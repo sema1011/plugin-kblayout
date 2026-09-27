@@ -214,14 +214,10 @@ void KbLayoutWidget::updateDisplay()
                 // Directory path: /path/to/flags -> /path/to/flags/us.png
                 flagFile = m_flagPattern + "/" + m_layoutSyms[m_currentIdx].toLower() + ".png";
             }
-            qDebug() << "kblayout: flag file:" << flagFile << "exists:" << QFile::exists(flagFile);
             if (QFile::exists(flagFile)) {
                 layoutIcon = QIcon(flagFile);
-                qDebug() << "kblayout: icon availableSizes:" << layoutIcon.availableSizes();
                 // Verify icon produces a pixmap (use fixed size since iconSize() is 0,0 by default)
-                QPixmap pm = layoutIcon.pixmap(24, 24);
-                qDebug() << "kblayout: pixmap 24x24 isNull:" << pm.isNull() << "size:" << pm.size();
-                if (pm.isNull()) {
+                if (layoutIcon.pixmap(24, 24).isNull()) {
                     layoutIcon = QIcon();
                 }
             }
