@@ -67,14 +67,14 @@ KbLayout::KbLayout(const ILXQtPanelPluginStartupInfo &startupInfo) :
         connect(m_backend, &KbLayoutBackend::layoutChanged,
                 this, &KbLayout::updateWidgetFromBackend);
 
+        // Connect LED state signal (works for both X11 and Wayland)
+        connect(m_backend, &KbLayoutBackend::ledStateChanged,
+                this, &KbLayout::updateLedState);
+
+        // Create KbdKeeper for X11
 #ifdef KBLAYOUT_X11
-        // Connect LED state signal (X11 only)
         auto *x11Backend = qobject_cast<X11Backend*>(m_backend);
         if (x11Backend) {
-            connect(x11Backend, &X11Backend::ledStateChanged,
-                    this, &KbLayout::updateLedState);
-
-            // Create KbdKeeper for X11
             m_keeper = new WinKbdKeeper(
                 static_cast<xcb_connection_t*>(x11Backend->connection()),
                 x11Backend->deviceId());

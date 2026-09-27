@@ -112,6 +112,11 @@ private:
     QTimer *m_pollTimer{nullptr};
 
     /**
+     * \brief Polling timer for LED state detection.
+     */
+    QTimer *m_ledPollTimer{nullptr};
+
+    /**
      * \brief Current active layout name (from polling).
      */
     QString m_activeLayoutName;
@@ -126,6 +131,13 @@ private:
      */
     int m_pollInterval{2000};
 
+    /**
+     * \brief Cached LED states.
+     */
+    bool m_ledCaps{false};
+    bool m_ledNum{false};
+    bool m_ledScroll{false};
+
 private slots:
     /**
      * \brief D-Bus slot for KWin layoutChanged signal.
@@ -136,6 +148,16 @@ private slots:
      * \brief Polling timer slot for Sway/Hyprland layout detection.
      */
     void _on_poll_timer();
+
+    /**
+     * \brief Polling timer slot for LED state detection.
+     */
+    void _on_led_poll_timer();
+
+    /**
+     * \brief Read LED states from xkbcommon/sysfs.
+     */
+    void readLedStatesFromXkb();
 
 private:
     bool m_valid{false};

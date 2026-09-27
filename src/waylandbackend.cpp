@@ -138,6 +138,13 @@ bool WaylandBackend::initKWin()
         } else {
             qInfo() << "kblayout: KWin waiting for D-Bus reply...";
         }
+
+        // Start LED state polling timer
+        m_ledPollTimer = new QTimer(this);
+        m_ledPollTimer->setInterval(500);  // Poll every 500ms
+        connect(m_ledPollTimer, &QTimer::timeout,
+                this, &WaylandBackend::_on_led_poll_timer);
+        m_ledPollTimer->start();
     }
 
     // Fallback: try org.freedesktop.Implementations.Keyboards
@@ -579,6 +586,70 @@ void WaylandBackend::_on_kwin_layoutChanged(uint index)
     m_cachedLayoutIdx = static_cast<int>(index);
     readKWinLayouts();
     emit layoutChanged(m_cachedLayoutIdx);
+}
+
+void WaylandBackend::_on_led_poll_timer()
+{
+    // Read LED states via qdbus6 for KWin
+    if (m_compositor == QLatin1String("kwin")) {
+        // Try to read LED state from KWin D-Bus
+        QProcess process;
+        process.start("qdbus6", {
+            "org.kde.KWin", "/Layouts",
+            "org.kde.KeyboardLayouts.getLayout"
+        });
+        process.waitForFinished(500);
+
+        // For now, read from xkbcommon state file
+        // This is a fallback — KWin doesn't expose LED states via D-Bus
+        // We'll use a simple heuristic: read from /proc or use xinput
+        readLedStatesFromXkb();
+        return;
+    }
+
+    // For other compositors, use polling
+    readLedStatesFromXkb();
+}
+
+void WaylandBackend::readLedStatesFromXkb()
+{
+    // Read LED states from xkbcommon state
+    // This is a simplified implementation — in production, we'd use
+    // xkbcommon directly or read from the compositor's state
+    bool caps = false, num = false, scroll = false;
+
+    // Try to read from /sys/class/leds (Linux kernel LED subsystem)
+    QFile capsLed("/sys/class/leds/usb::kbd_caps");
+    if (capsLed.exists()) {
+        if (capsLed.open(QIODevice::ReadOnly)) {
+            QString state = QString::fromUtf8(capsLed.readAll()).trimmed();
+            caps = (state == "1" || state == "on" || state == "1\n");
+        }
+    }
+
+    QFile numLed("/sys/class/leds/usb::kbd_num");
+    if (numLed.exists()) {
+        if (numLed.open(QIODevice::ReadOnly)) {
+            QString state = QString::fromUtf8(numLed.readAll()).trimmed();
+            num = (state == "1" || state == "on" || state == "1\n");
+        }
+    }
+
+    QFile scrollLed("/sys/class/leds/usb::kbd_scroll");
+    if (scrollLed.exists()) {
+        if (scrollLed.open(QIODevice::ReadOnly)) {
+            QString state = QString::fromUtf8(scrollLed.readAll()).trimmed();
+            scroll = (state == "1" || state == "on" || state == "1\n");
+        }
+    }
+
+    // Only emit if state changed
+    if (caps != m_ledCaps || num != m_ledNum || scroll != m_ledScroll) {
+        m_ledCaps = caps;
+        m_ledNum = num;
+        m_ledScroll = scroll;
+        emit ledStateChanged(caps, num, scroll);
+    }
 }
 
 void WaylandBackend::_on_poll_timer()

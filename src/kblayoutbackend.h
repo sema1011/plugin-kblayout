@@ -74,6 +74,14 @@ signals:
      * \param index New current layout index.
      */
     void layoutChanged(int index);
+
+    /**
+     * \brief Emitted when LED states change (Caps/Num/Scroll lock).
+     * \param caps CapsLock state
+     * \param num NumLock state
+     * \param scroll ScrollLock state
+     */
+    void ledStateChanged(bool caps, bool num, bool scroll);
 };
 
 #endif // KBLAYOUTBACKEND_H
