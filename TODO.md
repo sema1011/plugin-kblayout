@@ -374,61 +374,63 @@ fallbackSwitchViaKeyEmulation():
 
 ### Результаты (2026-09-27)
 
-**KbLayoutWidget** (`src/kblayoutwidget.h/cpp`):
+**KbdKeeper** (`src/kbdkeeper.h/cpp`):
 
 ```
-Сигналы:
-  ├── layoutNextRequested()  — левый клик
-  ├── configureRequested()   — "Configure..." в меню
-  └── layoutSelected(int)    — выбор из контекстного меню
+KbLayoutKeeper (базовый):
+  ├── QTimer (500ms) → checkState()
+  ├── switchToNext() → циклическое переключение
+  └── switchToGroup(group) → xcb_xkb_latch_lock_state()
 
-Методы:
-  ├── setPanel(ILXQtPanel*)  — для popup positioning
-  ├── setLayouts(syms, names) — обновление списка
-  ├── setCurrentLayout(idx)   — обновление текущего
-  └── popupPosition()         — calculatePopupWindowPos или mapToGlobal
+WinKbdKeeper (по окнам):
+  ├── xcb_get_input_focus() → m_activeWindow
+  ├── QHash<WId, int> m_mapping → remember layout per window
+  └── checkState() → restore layout on window focus change
 
-Контекстное меню:
-  ├── "Next Layout" (Ctrl+Space)
-  ├── [x] Russian (RU)  ← текущая с галочкой
-  ├── [ ] English (US)
-  ├── ...
-  └── "Configure..."
-
-Тултип:
-  "Russian (RU)\n---\nLeft click: next layout\nRight click: select layout"
+AppKbdKeeper (по приложениям):
+  ├── QString m_activeClass → window class
+  ├── QHash<QString, int> m_mapping → remember layout per app
+  └── checkState() → restore layout on app focus change
 ```
 
-**KbLayout** (`src/kblayout.h/cpp`):
+**LED-статус** (`src/x11backend.h/cpp`, `src/kblayoutwidget.h/cpp`):
 
 ```
-Связывание:
-  ├── m_backend->layoutChanged → updateWidgetFromBackend()
-  ├── widget.layoutNextRequested → onLayoutNextRequested() → backend->nextLayout()
-  ├── widget.layoutSelected(idx) → onLayoutSelected(idx) → backend->setLayout(idx)
-  └── widget.configureRequested → onConfigureRequested() → dlg->open()
+X11Backend:
+  ├── readLedState(): xkb_state_led_index_is_active(CAPS/NUM/SCROLL)
+  └── ledStateChanged(bool caps, bool num, bool scroll) — сигнал
 
-updateWidgetFromBackend():
-  ├── m_widget.setLayouts(syms, names)
-  ├── m_widget.setCurrentLayout(idx)
-  └── showLayoutNotification(layoutName)
-
-showLayoutNotification():
-  ├── KDE KNotify → event("Keyboard Layout", layoutName)
-  └── FreeDesktop Notify → Notify("LXQt Keyboard Layout", layoutName)
+KbLayoutWidget:
+  ├── m_capsLabel, m_numLabel, m_scrollLabel (QLabel)
+  ├── setLedState(caps, num, scroll) → зелёный/серый цвет
+  ├── setShowCaps/Num/Scroll(show) → видимость
+  └── Обновление через сигнал от X11Backend
 ```
 
-**KbLayoutSettingsDialog** (`src/kblayoutsettingsdialog.h/cpp`):
+**UI-диалог** (`src/kblayoutsettingsdialog.ui`):
 
 ```
-UI:
-  ├── Display group:
-  │   ├── [x] Show layout text (e.g. EN, RU)
-  │   ├── [ ] Show flag icon (disabled — TODO)
-  │   └── Font size: [9]
-  ├── Behavior group:
-  │   └── [x] Show notification on layout switch
-  └── Buttons: Apply | Close
+Display group:
+  ├── [x] Show layout text (e.g. EN, RU)
+  ├── [ ] Show Caps Lock indicator
+  ├── [ ] Show Num Lock indicator
+  ├── [ ] Show Scroll Lock indicator
+  └── Font size: [9]
+
+Behavior group:
+  └── [x] Show notification on layout switch
+
+Buttons: Apply | Close
+```
+
+**Интеграция** (`src/kblayout.h/cpp`):
+
+```
+KbLayout:
+  ├── WinKbdKeeper *m_keeper → KeeperType::Global (X11)
+  ├── connect(x11Backend->ledStateChanged, updateLedState)
+  ├── settingsChanged() → apply LED settings
+  └── updateLedState(caps, num, scroll) → m_widget.setLedState()
 ```
 
 **Сборка:** `libkblayout.so` 639 КБ, оба бэкенда (X11 + Wayland)
