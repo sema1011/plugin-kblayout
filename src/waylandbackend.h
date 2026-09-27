@@ -133,6 +133,11 @@ private slots:
     void _on_kwin_layoutChanged(uint index);
 
     /**
+     * \brief Async D-Bus reply handler for getLayoutsList.
+     */
+    void _on_kwin_layouts_reply(QDBusPendingCallWatcher *watcher);
+
+    /**
      * \brief Polling timer slot for Sway/Hyprland layout detection.
      */
     void _on_poll_timer();

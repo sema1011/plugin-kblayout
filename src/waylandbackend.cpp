@@ -27,6 +27,8 @@
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusReply>
+#include <QDBusPendingCall>
+#include <QDBusPendingCallWatcher>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QDebug>
@@ -122,8 +124,17 @@ bool WaylandBackend::initKWin()
             this,
             SLOT(_on_kwin_layoutChanged(uint)));
 
+        // Start async read — m_valid will be set in _on_kwin_layouts_reply
         readKWinLayouts();
-        m_valid = !m_layoutSyms.isEmpty();
+
+        // If sync read already populated layouts, we're good
+        if (!m_layoutSyms.isEmpty()) {
+            m_valid = true;
+            qInfo() << "kblayout: KWin backend initialized,"
+                    << m_layoutSyms.size() << "layouts found";
+        } else {
+            qInfo() << "kblayout: KWin waiting for D-Bus reply...";
+        }
     }
 
     // Fallback: try org.freedesktop.Implementations.Keyboards
@@ -188,24 +199,50 @@ void WaylandBackend::readKWinLayouts()
     if (!m_kwinLayouts)
         return;
 
-    // D-Bus returns "a(sss)" — use QDBusInterface::call() with timeout
-    QDBusMessage reply = m_kwinLayouts->call(
-        QStringLiteral("getLayoutsList"),
-        QDBus::Block, 3000);  // 3 second timeout
+    // Use qdbus command to avoid blocking the main thread
+    QProcess process;
+    process.start("qdbus", {
+        "org.kde.KWin", "/Layouts",
+        "org.kde.KeyboardLayouts.getLayoutsList"
+    });
+    process.waitForFinished(3000);  // 3 second timeout
 
-    if (reply.type() == QDBusMessage::ReplyMessage && reply.arguments().size() >= 1) {
+    if (process.exitCode() == 0) {
+        QByteArray output = process.readAllStandardOutput();
+        QString outputStr = QString::fromUtf8(output).trimmed();
+
+        // Parse: [('us', '', 'English (US)'), ('ru', '', 'Russian')]
+        int depth = 0;
+        int start = -1;
+        QStringList layouts;
+
+        for (int i = 0; i < outputStr.size(); ++i) {
+            QChar c = outputStr[i];
+            if (c == '(') {
+                if (depth == 1) start = i + 1;
+                depth++;
+            } else if (c == ')') {
+                depth--;
+                if (depth == 1 && start >= 0) {
+                    QString tuple = outputStr.mid(start, i - start);
+                    layouts.append(tuple);
+                    start = -1;
+                }
+            }
+        }
+
         m_layoutSyms.clear();
         m_layoutNames.clear();
-
-        QDBusArgument arg = reply.arguments().at(0).value<QDBusArgument>();
-        arg.beginArray();
-        while (!arg.atEnd()) {
-            QString sym, variant, displayName;
-            arg >> sym >> variant >> displayName;
-            m_layoutSyms.append(sym);
-            m_layoutNames.append(displayName.isEmpty() ? sym.toUpper() : displayName);
+        for (const auto &tuple : layouts) {
+            // Parse ('us', '', 'English (US)')
+            QStringList parts = tuple.split(',', Qt::SkipEmptyParts);
+            if (parts.size() >= 3) {
+                QString sym = parts[0].trimmed().remove('\'');
+                QString displayName = parts[2].trimmed().remove('\'');
+                m_layoutSyms.append(sym);
+                m_layoutNames.append(displayName.isEmpty() ? sym.toUpper() : displayName);
+            }
         }
-        arg.endArray();
     }
 }
 
