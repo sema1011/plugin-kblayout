@@ -58,11 +58,6 @@ KbLayoutWidget::KbLayoutWidget(QWidget *parent) :
     m_button->installEventFilter(this);
 
     // LED indicators (initially hidden)
-
-    // Install event filter for right-click menu
-    m_button->installEventFilter(this);
-
-    // LED indicators (initially hidden)
     m_capsLabel = new QLabel(QStringLiteral("Caps"), this);
     m_capsLabel->setFixedSize(32, 18);
     m_capsLabel->setStyleSheet(QStringLiteral("color: gray; font-size: 12px; font-weight: bold;"));
@@ -209,17 +204,18 @@ void KbLayoutWidget::updateDisplay()
             }
             if (QFile::exists(flagFile)) {
                 layoutIcon = QIcon(flagFile);
-                // Verify icon produces a pixmap (use font size for matching)
-                if (layoutIcon.pixmap(m_fontSize, m_fontSize).isNull()) {
+                // Verify icon produces a pixmap (icon slightly larger than font for visual match)
+                int iconSize = m_fontSize + 6;
+                if (layoutIcon.pixmap(iconSize, iconSize).isNull()) {
                     layoutIcon = QIcon();
                 }
             }
         }
 
-        if (m_showFlags && !m_flagPattern.isEmpty() && !layoutIcon.pixmap(m_fontSize, m_fontSize).isNull()) {
+        if (m_showFlags && !m_flagPattern.isEmpty() && !layoutIcon.pixmap(m_fontSize + 6, m_fontSize + 6).isNull()) {
             // Flag icon mode: show icon matching font size
             m_button->setIcon(layoutIcon);
-            m_button->setIconSize(QSize(m_fontSize, m_fontSize));
+            m_button->setIconSize(QSize(m_fontSize + 6, m_fontSize + 6));
             m_button->setToolButtonStyle(Qt::ToolButtonIconOnly);
         } else {
             // Text mode: show layout symbol (default when flags disabled)
