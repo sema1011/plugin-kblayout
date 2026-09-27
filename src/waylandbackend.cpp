@@ -619,55 +619,64 @@ void WaylandBackend::readLedStatesFromXkb()
     bool caps = false, num = false, scroll = false;
 
     // Try multiple possible LED paths
-    QStringList ledPaths = {
-        "/sys/class/leds/usb::kbd_caps",
-        "/sys/class/leds/platform::capslock",
-        "/sys/class/leds/capslock",
+    QStringList ledDirs = {
+        "/sys/class/leds/input5::capslock",
+        "/sys/class/leds/input4::capslock",
+        "/sys/class/leds/input3::capslock",
+        "/sys/class/leds/input2::capslock",
+        "/sys/class/leds/input1::capslock",
+        "/sys/class/leds/input0::capslock",
     };
 
-    for (const auto &path : ledPaths) {
-        QFile capsLed(path);
-        if (capsLed.exists()) {
-            if (capsLed.open(QIODevice::ReadOnly)) {
-                QString state = QString::fromUtf8(capsLed.readAll()).trimmed();
-                caps = (state == "1" || state == "on" || state == "1\n");
-                qDebug() << "kblayout: CapsLED state from" << path << "=" << state;
+    for (const auto &dir : ledDirs) {
+        QFile brightness(dir + "/brightness");
+        if (brightness.exists()) {
+            if (brightness.open(QIODevice::ReadOnly)) {
+                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
+                caps = (state.toInt() > 0);
+                qDebug() << "kblayout: CapsLED" << dir << "/brightness =" << state << "->" << caps;
             }
             break;
         }
     }
 
-    ledPaths = {
-        "/sys/class/leds/usb::kbd_num",
-        "/sys/class/leds/platform::numlock",
-        "/sys/class/leds/numlock",
+    ledDirs = {
+        "/sys/class/leds/input5::numlock",
+        "/sys/class/leds/input4::numlock",
+        "/sys/class/leds/input3::numlock",
+        "/sys/class/leds/input2::numlock",
+        "/sys/class/leds/input1::numlock",
+        "/sys/class/leds/input0::numlock",
     };
 
-    for (const auto &path : ledPaths) {
-        QFile numLed(path);
-        if (numLed.exists()) {
-            if (numLed.open(QIODevice::ReadOnly)) {
-                QString state = QString::fromUtf8(numLed.readAll()).trimmed();
-                num = (state == "1" || state == "on" || state == "1\n");
-                qDebug() << "kblayout: NumLED state from" << path << "=" << state;
+    for (const auto &dir : ledDirs) {
+        QFile brightness(dir + "/brightness");
+        if (brightness.exists()) {
+            if (brightness.open(QIODevice::ReadOnly)) {
+                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
+                num = (state.toInt() > 0);
+                qDebug() << "kblayout: NumLED" << dir << "/brightness =" << state << "->" << num;
             }
             break;
         }
     }
 
-    ledPaths = {
-        "/sys/class/leds/usb::kbd_scroll",
-        "/sys/class/leds/platform::scrolllock",
-        "/sys/class/leds/scrolllock",
+    ledDirs = {
+        "/sys/class/leds/input5::scrolllock",
+        "/sys/class/leds/input4::scrolllock",
+        "/sys/class/leds/input3::scrolllock",
+        "/sys/class/leds/input2::scrolllock",
+        "/sys/class/leds/input1::scrolllock",
+        "/sys/class/leds/input0::scrolllock",
     };
 
-    for (const auto &path : ledPaths) {
-        QFile scrollLed(path);
-        if (scrollLed.exists()) {
-            if (scrollLed.open(QIODevice::ReadOnly)) {
-                QString state = QString::fromUtf8(scrollLed.readAll()).trimmed();
-                scroll = (state == "1" || state == "on" || state == "1\n");
-                qDebug() << "kblayout: ScrollLED state from" << path << "=" << state;
+    for (const auto &dir : ledDirs) {
+        QFile brightness(dir + "/brightness");
+        if (brightness.exists()) {
+            if (brightness.open(QIODevice::ReadOnly)) {
+                QString state = QString::fromUtf8(brightness.readAll()).trimmed();
+                scroll = (state.toInt() > 0);
+                qDebug() << "kblayout: ScrollLED" << dir << "/brightness =" << state << "->" << scroll;
             }
             break;
         }
