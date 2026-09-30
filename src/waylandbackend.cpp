@@ -916,6 +916,9 @@ void WaylandBackend::setLayout(int index)
     }
 
     // Labwc, Wayfire, generic: key emulation
+    // Update index and emit signal before switching (no IPC available)
+    m_currentLayoutIndex = index;
+    emit layoutChanged(m_currentLayoutIndex);
     fallbackSwitchViaKeyEmulation();
 }
 
