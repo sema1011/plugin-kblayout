@@ -71,6 +71,11 @@ private:
     static bool isProcessRunning(const QString &processName);
 
     /**
+     * \brief Check if any key emulation tool is available.
+     */
+    static bool hasKeyEmulationTool();
+
+    /**
      * \brief Parse INI-style config file for xkb_layout key.
      */
     static QStringList parseIniLayout(const QString &filePath,
