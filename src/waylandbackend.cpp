@@ -631,6 +631,20 @@ bool WaylandBackend::isProcessRunning(const QString &processName)
     return proc.exitCode() == 0;
 }
 
+bool WaylandBackend::hasKeyEmulationTool()
+{
+    // Check if any key emulation tool is available
+    QStringList tools = {"wtype", "ydotool", "xdotool"};
+    for (const auto &tool : tools) {
+        QProcess proc;
+        proc.start("which", {tool});
+        proc.waitForFinished(Kblayout::ShortProcessTimeoutMs);
+        if (proc.exitCode() == 0)
+            return true;
+    }
+    return false;
+}
+
 QStringList WaylandBackend::parseIniLayout(const QString &filePath,
                                            const QString &section,
                                            const QString &key)
@@ -677,6 +691,12 @@ QStringList WaylandBackend::parseIniLayout(const QString &filePath,
 bool WaylandBackend::initLabwc()
 {
     qInfo() << "kblayout: Labwc backend initialized";
+
+    // Warn if no key emulation tool is available
+    if (!hasKeyEmulationTool()) {
+        qWarning() << "kblayout: Labwc: No key emulation tool available (wtype/ydotool/xdotool).";
+        qWarning() << "kblayout: Layout switching will not work. Install 'wtype' to enable layout switching.";
+    }
 
     // 1. Try to read from ~/.config/labwc/environment (XKB_DEFAULT_LAYOUT)
     QString home = QProcessEnvironment::systemEnvironment().value(QStringLiteral("HOME"));
@@ -741,6 +761,12 @@ bool WaylandBackend::initLabwc()
 bool WaylandBackend::initWayfire()
 {
     qInfo() << "kblayout: Wayfire backend initialized";
+
+    // Warn if no key emulation tool is available
+    if (!hasKeyEmulationTool()) {
+        qWarning() << "kblayout: Wayfire: No key emulation tool available (wtype/ydotool/xdotool).";
+        qWarning() << "kblayout: Layout switching will not work. Install 'wtype' to enable layout switching.";
+    }
 
     // 1. Try to read from ~/.config/wayfire.ini [input] section
     QString home = QProcessEnvironment::systemEnvironment().value(QStringLiteral("HOME"));
