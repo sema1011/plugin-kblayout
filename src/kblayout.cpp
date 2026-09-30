@@ -204,8 +204,6 @@ void KbLayout::realign()
 
 void KbLayout::settingsChanged()
 {
-    m_settings.init(settings());
-
     // Apply display settings
     m_widget.setShowCaps(m_settings.showCaps());
     m_widget.setShowNum(m_settings.showNum());

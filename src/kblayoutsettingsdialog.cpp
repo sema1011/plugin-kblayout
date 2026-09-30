@@ -40,11 +40,13 @@ KbLayoutSettingsDialog::KbLayoutSettingsDialog(KbLayoutSettings *settings, QWidg
     ui->setupUi(this);
     loadSettings();
 
-    // Connect Apply button
+    // Connect Apply and Close buttons
     connect(ui->buttonBox, &QDialogButtonBox::clicked, this, [this](QAbstractButton *btn) {
         QPushButton *applyBtn = ui->buttonBox->button(QDialogButtonBox::Apply);
         if (applyBtn && btn == applyBtn) {
             onApply();
+        } else {
+            saveSettings();
         }
     });
 
