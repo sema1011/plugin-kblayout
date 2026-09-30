@@ -210,7 +210,7 @@ bool WaylandBackend::initKWin()
     } else {
         qWarning() << "kblayout: KWin backend initialized but no layouts found";
     }
-    m_kwinInitDone = m_valid;
+    m_layoutNamesNeedRefresh = m_valid;
     return m_valid;
 }
 
@@ -308,32 +308,6 @@ void WaylandBackend::onKWinLayoutsFinished()
     m_asyncProcess = nullptr;
 }
 
-void WaylandBackend::readKXkbConfig()
-{
-    // Async: use kreadconfig6 to read layout list from kxkbrc (non-blocking).
-    // Only called after init (via _on_kwin_layoutChanged).
-    // Kill any running async process from a previous call
-    if (m_asyncProcess && m_asyncProcess->state() != QProcess::NotRunning) {
-        m_asyncProcess->kill();
-        m_asyncProcess->waitForFinished(Kblayout::ShortProcessTimeoutMs);
-    }
-    if (m_asyncProcess) {
-        m_asyncProcess->deleteLater();
-        m_asyncProcess = nullptr;
-    }
-
-    m_asyncProcess = new QProcess(this);
-
-    m_asyncProcess->start("kreadconfig6", {
-        "--file", "kxkbrc",
-        "--group", "Layout",
-        "--key", "LayoutList"
-    });
-
-    connect(m_asyncProcess, &QProcess::finished,
-            this, &WaylandBackend::onKXkbConfigFinished);
-}
-
 void WaylandBackend::readKXkbConfigSync()
 {
     // Synchronous read of kxkbrc — used during init fallback.
@@ -365,34 +339,6 @@ void WaylandBackend::readKXkbConfigSync()
         qWarning() << "kblayout: kreadconfig6 failed with exit code"
                     << proc.exitCode();
     }
-}
-
-void WaylandBackend::onKXkbConfigFinished()
-{
-    if (!m_asyncProcess)
-        return;
-
-    QString layout = QString::fromUtf8(
-        m_asyncProcess->readAllStandardOutput()).trimmed();
-    qDebug() << "kblayout: kreadconfig6 LayoutList =" << layout;
-
-    if (layout.isEmpty()) {
-        qWarning() << "kblayout: kreadconfig6 returned empty";
-        m_asyncProcess->deleteLater();
-        m_asyncProcess = nullptr;
-        return;
-    }
-
-    // Parse comma-separated layout list (e.g. "us,ru,de")
-    const auto parts = layout.split(',', Qt::SkipEmptyParts);
-
-    for (const auto &sym : parts) {
-        m_layoutSyms.append(sym.trimmed().toLower());
-        m_layoutNames.append(sym.trimmed().toUpper());
-    }
-
-    m_asyncProcess->deleteLater();
-    m_asyncProcess = nullptr;
 }
 
 // ============================================================================
@@ -988,11 +934,11 @@ void WaylandBackend::_on_kwin_layoutChanged(uint index)
     // Cache the index from D-Bus signal (avoids blocking D-Bus call)
     m_currentLayoutIndex = static_cast<int>(index);
 
-    // Only refresh layout names asynchronously once after init completes.
+    // Refresh layout names asynchronously only once after init.
     // Layouts are already populated from sync init, so this is just a
     // best-effort refresh of display names — skip if already done.
-    if (m_kwinInitDone) {
-        m_kwinInitDone = false; // prevent further calls
+    if (m_layoutNamesNeedRefresh) {
+        m_layoutNamesNeedRefresh = false;
         readKWinLayouts();
     }
 
@@ -1007,57 +953,9 @@ void WaylandBackend::_on_led_poll_timer()
 
 void WaylandBackend::readLedStatesFromXkb()
 {
-    // Read LED states from various sources
-    bool caps = false, num = false, scroll = false;
-
-    // Try multiple possible LED paths for each LED
-    QStringList capsDirs = {
-        "/sys/class/leds/input5::capslock",
-        "/sys/class/leds/input4::capslock",
-        "/sys/class/leds/input3::capslock",
-        "/sys/class/leds/input2::capslock",
-        "/sys/class/leds/input1::capslock",
-        "/sys/class/leds/input0::capslock",
-    };
-
-    for (const auto &dir : capsDirs) {
-        if (readLedStateFromFile(dir + "/brightness")) {
-            caps = true;
-            break;
-        }
-    }
-
-    QStringList numDirs = {
-        "/sys/class/leds/input5::numlock",
-        "/sys/class/leds/input4::numlock",
-        "/sys/class/leds/input3::numlock",
-        "/sys/class/leds/input2::numlock",
-        "/sys/class/leds/input1::numlock",
-        "/sys/class/leds/input0::numlock",
-    };
-
-    for (const auto &dir : numDirs) {
-        if (readLedStateFromFile(dir + "/brightness")) {
-            num = true;
-            break;
-        }
-    }
-
-    QStringList scrollDirs = {
-        "/sys/class/leds/input5::scrolllock",
-        "/sys/class/leds/input4::scrolllock",
-        "/sys/class/leds/input3::scrolllock",
-        "/sys/class/leds/input2::scrolllock",
-        "/sys/class/leds/input1::scrolllock",
-        "/sys/class/leds/input0::scrolllock",
-    };
-
-    for (const auto &dir : scrollDirs) {
-        if (readLedStateFromFile(dir + "/brightness")) {
-            scroll = true;
-            break;
-        }
-    }
+    bool caps = readLedStateFromFirstMatchingDir(QStringLiteral("capslock"));
+    bool num = readLedStateFromFirstMatchingDir(QStringLiteral("numlock"));
+    bool scroll = readLedStateFromFirstMatchingDir(QStringLiteral("scrolllock"));
 
     // Only emit if state changed
     if (caps != m_ledCaps || num != m_ledNum || scroll != m_ledScroll) {
@@ -1071,56 +969,9 @@ void WaylandBackend::readLedStatesFromXkb()
 void WaylandBackend::emitInitialLedState()
 {
     // Read current LED states and emit immediately (ignoring cached values)
-    bool caps = false, num = false, scroll = false;
-
-    // Try multiple possible LED paths for each LED
-    QStringList capsDirs = {
-        "/sys/class/leds/input5::capslock",
-        "/sys/class/leds/input4::capslock",
-        "/sys/class/leds/input3::capslock",
-        "/sys/class/leds/input2::capslock",
-        "/sys/class/leds/input1::capslock",
-        "/sys/class/leds/input0::capslock",
-    };
-
-    for (const auto &dir : capsDirs) {
-        if (readLedStateFromFile(dir + "/brightness")) {
-            caps = true;
-            break;
-        }
-    }
-
-    QStringList numDirs = {
-        "/sys/class/leds/input5::numlock",
-        "/sys/class/leds/input4::numlock",
-        "/sys/class/leds/input3::numlock",
-        "/sys/class/leds/input2::numlock",
-        "/sys/class/leds/input1::numlock",
-        "/sys/class/leds/input0::numlock",
-    };
-
-    for (const auto &dir : numDirs) {
-        if (readLedStateFromFile(dir + "/brightness")) {
-            num = true;
-            break;
-        }
-    }
-
-    QStringList scrollDirs = {
-        "/sys/class/leds/input5::scrolllock",
-        "/sys/class/leds/input4::scrolllock",
-        "/sys/class/leds/input3::scrolllock",
-        "/sys/class/leds/input2::scrolllock",
-        "/sys/class/leds/input1::scrolllock",
-        "/sys/class/leds/input0::scrolllock",
-    };
-
-    for (const auto &dir : scrollDirs) {
-        if (readLedStateFromFile(dir + "/brightness")) {
-            scroll = true;
-            break;
-        }
-    }
+    bool caps = readLedStateFromFirstMatchingDir(QStringLiteral("capslock"));
+    bool num = readLedStateFromFirstMatchingDir(QStringLiteral("numlock"));
+    bool scroll = readLedStateFromFirstMatchingDir(QStringLiteral("scrolllock"));
 
     // Update cached values and emit immediately
     m_ledCaps = caps;
@@ -1138,6 +989,24 @@ bool WaylandBackend::readLedStateFromFile(const QString &path)
         return state.toInt() > 0;
     }
     file.close();
+    return false;
+}
+
+bool WaylandBackend::readLedStateFromFirstMatchingDir(const QString &ledSuffix)
+{
+    QDir ledsDir(QStringLiteral("/sys/class/leds"));
+    if (!ledsDir.exists())
+        return false;
+
+    ledsDir.setFilter(QDir::Dirs | QDir::NoDotAndDotDot);
+    ledsDir.setSorting(QDir::Name);
+
+    const QString pattern = QStringLiteral("::%1/brightness").arg(ledSuffix);
+
+    for (const auto &entry : ledsDir.entryList()) {
+        if (readLedStateFromFile(QStringLiteral("%1/%2").arg(entry, pattern)))
+            return true;
+    }
     return false;
 }
 
@@ -1170,17 +1039,22 @@ void WaylandBackend::_on_poll_timer()
 
 void WaylandBackend::fallbackSwitchViaKeyEmulation()
 {
-    // Try wtype first (modern, supports Wayland)
-    if (m_asyncProcess)
-        delete m_asyncProcess;
-    m_asyncProcess = new QProcess(this);
+    // Kill any previous async process
+    if (m_asyncProcess && m_asyncProcess->state() != QProcess::NotRunning) {
+        m_asyncProcess->kill();
+        m_asyncProcess->waitForFinished(Kblayout::ShortProcessTimeoutMs);
+        m_asyncProcess->deleteLater();
+    }
+    m_asyncProcess = nullptr;
 
+    // Try wtype first (modern, supports Wayland)
+    m_asyncProcess = new QProcess(this);
     m_asyncProcess->start(QStringLiteral("wtype"),
-               {QStringLiteral("-m"), QStringLiteral("Alt+Shift")});
+               {QStringLiteral("-m"), QStringLiteral("Alt"), QStringLiteral("Shift_L")});
 
     connect(m_asyncProcess, &QProcess::finished,
-            this, [this]() {
-        if (m_asyncProcess && m_asyncProcess->exitCode() == 0) {
+            this, [this](int exitCode) {
+        if (exitCode == 0) {
             qInfo() << "kblayout: Layout switched via wtype (Alt+Shift)";
             m_asyncProcess->deleteLater();
             m_asyncProcess = nullptr;
@@ -1188,20 +1062,22 @@ void WaylandBackend::fallbackSwitchViaKeyEmulation()
         }
 
         // Fallback to xdotool (may not work on all Wayland compositors)
-        if (m_asyncProcess) {
-            m_asyncProcess->start(QStringLiteral("xdotool"),
-                       {QStringLiteral("key"), QStringLiteral("Alt+Shift_L")});
+        m_asyncProcess->deleteLater();
+        m_asyncProcess = nullptr;
 
-            connect(m_asyncProcess, &QProcess::finished,
-                    this, [this]() {
-                if (m_asyncProcess && m_asyncProcess->exitCode() == 0) {
-                    qInfo() << "kblayout: Layout switched via xdotool (Alt+Shift_L)";
-                } else {
-                    qWarning() << "kblayout: Neither wtype nor xdotool available for key emulation";
-                }
-                m_asyncProcess->deleteLater();
-                m_asyncProcess = nullptr;
-            });
-        }
+        m_asyncProcess = new QProcess(this);
+        m_asyncProcess->start(QStringLiteral("xdotool"),
+                   {QStringLiteral("key"), QStringLiteral("Alt+Shift_L")});
+
+        connect(m_asyncProcess, &QProcess::finished,
+                this, [this](int exitCode) {
+            if (exitCode == 0) {
+                qInfo() << "kblayout: Layout switched via xdotool (Alt+Shift_L)";
+            } else {
+                qWarning() << "kblayout: Neither wtype nor xdotool available for key emulation";
+            }
+            m_asyncProcess->deleteLater();
+            m_asyncProcess = nullptr;
+        });
     });
 }

@@ -179,7 +179,7 @@ void KbLayoutWidget::setFlagPattern(const QString &pattern)
     updateDisplay();
 }
 
-bool KbLayoutWidget::validateFlagPattern(const QString &pattern)
+bool KbLayoutWidget::validateFlagPattern(const QString &pattern) const
 {
     if (pattern.isEmpty())
         return true;  // Empty is valid (no flags)

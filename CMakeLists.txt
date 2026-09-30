@@ -168,3 +168,6 @@ install(FILES resources/kblayout.desktop.in
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/lxqt-panel"
 )
 
+# Unit tests
+add_subdirectory(tests)
+

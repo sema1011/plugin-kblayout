@@ -88,7 +88,6 @@ private:
     bool initKWin();
     void readKWinLayouts();
     void readKWinLayoutsSync();
-    void readKXkbConfig();
     void readKXkbConfigSync();
 
     /**
@@ -179,7 +178,7 @@ private slots:
     void _on_led_poll_timer();
 
     /**
-     * \brief Read LED states from sysfs.
+     * \brief Read LED states from sysfs using glob search.
      */
     void readLedStatesFromXkb();
 
@@ -190,20 +189,22 @@ private slots:
 
     /**
      * \brief Read LED state from a sysfs brightness file.
-     * \param path Path to the brightness file (e.g. /sys/class/leds/input0::capslock/brightness)
-     * \return true if LED is on, false otherwise. Returns false if file doesn't exist or can't be read.
+     * \param path Path to the brightness file.
+     * \return true if LED is on, false otherwise.
      */
     bool readLedStateFromFile(const QString &path);
+
+    /**
+     * \brief Find and read LED state from the first matching sysfs dir.
+     * \param ledSuffix LED suffix (e.g. "capslock", "numlock", "scrolllock").
+     * \return true if LED is on, false otherwise.
+     */
+    bool readLedStateFromFirstMatchingDir(const QString &ledSuffix);
 
     /**
      * \brief Async slot: handle qdbus6 output for KWin layouts.
      */
     void onKWinLayoutsFinished();
-
-    /**
-     * \brief Async slot: handle kreadconfig6 output for KWin config.
-     */
-    void onKXkbConfigFinished();
 
     /**
      * \brief Async slot: handle swaymsg output for Sway layouts.
@@ -235,11 +236,11 @@ private:
     QProcess *m_asyncProcess{nullptr};
 
     /**
-     * \brief Set to true after initKWin() completes successfully.
+     * \brief Set to true if layout names need to be refreshed once.
      * Prevents _on_kwin_layoutChanged from calling readKWinLayouts()
-     * more than once.
+     * more than once after init.
      */
-    bool m_kwinInitDone{false};
+    bool m_layoutNamesNeedRefresh{false};
 };
 
 #endif // WAYLANDBACKEND_H

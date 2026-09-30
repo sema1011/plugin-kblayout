@@ -94,6 +94,8 @@ public:
     void setFlagPattern(const QString &pattern);
     void setShowFlags(bool show);
 
+    bool validateFlagPattern(const QString &pattern) const;
+
 public slots:
     /**
      * \brief Update display when layout changes.
@@ -125,7 +127,6 @@ private:
     void updateDisplay();
     void buildContextMenu();
     QPoint popupPosition();
-    bool validateFlagPattern(const QString &pattern);
 
     QToolButton *m_button{nullptr};
     QMenu *m_menu{nullptr};
