@@ -122,6 +122,25 @@ if(NOT KBLAYOUT_X11 AND NOT KBLAYOUT_WAYLAND)
     message(FATAL_ERROR "kblayout: At least one backend must be enabled (KBLAYOUT_X11 or KBLAYOUT_WAYLAND)")
 endif()
 
+# Translations
+lxqt_translate_ts(QM_FILES
+    UPDATE_TRANSLATIONS ${UPDATE_TRANSLATIONS}
+    SOURCES
+        ${HEADERS}
+        ${SOURCES}
+        ${UI_HEADERS}
+    TEMPLATE
+        kblayout
+    INSTALL_DIR
+        "${LXQT_TRANSLATIONS_DIR}/lxqt-panel/kblayout"
+)
+
+# Translation loader
+lxqt_plugin_translation_loader(QM_LOADER kblayout "lxqt-panel")
+
+# Add loader and QM files to sources
+list(APPEND SOURCES ${QM_LOADER} ${QM_FILES})
+
 # Build plugin as shared library
 add_library(${PROJECT_NAME} MODULE
     ${HEADERS}
@@ -148,23 +167,4 @@ install(FILES resources/kblayout.desktop.in
     RENAME kblayout.desktop
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/lxqt-panel"
 )
-
-# Translations
-lxqt_translate_ts(QM_FILES
-    UPDATE_TRANSLATIONS ${UPDATE_TRANSLATIONS}
-    SOURCES
-        ${HEADERS}
-        ${SOURCES}
-        ${UI_HEADERS}
-    TEMPLATE
-        kblayout
-    INSTALL_DIR
-        "${LXQT_TRANSLATIONS_DIR}/lxqt-panel/kblayout"
-)
-
-# Translation loader
-lxqt_plugin_translation_loader(QM_LOADER kblayout "lxqt-panel")
-
-# Add loader and QM files to sources
-list(APPEND SOURCES ${QM_LOADER} ${QM_FILES})
 
