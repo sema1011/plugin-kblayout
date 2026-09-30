@@ -5,6 +5,8 @@ project(kblayout LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include(LXQtTranslate)
+
 # Backend options (respects ebuild USE flags, defaults to auto-detect)
 # Set to ON/OFF from ebuild, or leave undefined for auto-detect
 if(NOT DEFINED KBLAYOUT_X11)
@@ -147,30 +149,22 @@ install(FILES resources/kblayout.desktop.in
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/lxqt-panel"
 )
 
-# Auto-compile all .ts files to .qm files for translations
-file(GLOB TRANSLATION_TS_FILES "${CMAKE_SOURCE_DIR}/translations/*.ts")
-set(TRANSLATION_QM_FILES "")
-foreach(ts_file ${TRANSLATION_TS_FILES})
-    get_filename_component(ts_name ${ts_file} NAME_WE)  # e.g. "ru" from "ru.ts"
-    
-    # Skip template files (they are just examples, not real translations)
-    if(ts_name STREQUAL "template")
-        continue()
-    endif()
-    
-    qt_add_translation(QM_FILES ${ts_file})
-    list(APPEND TRANSLATION_QM_FILES ${QM_FILES})
-endforeach()
+# Translations
+lxqt_translate_ts(QM_FILES
+    UPDATE_TRANSLATIONS ${UPDATE_TRANSLATIONS}
+    SOURCES
+        ${HEADERS}
+        ${SOURCES}
+        ${UI_HEADERS}
+    TEMPLATE
+        kblayout
+    INSTALL_DIR
+        "${LXQT_TRANSLATIONS_DIR}/lxqt-panel/kblayout"
+)
 
-# Create a target to build all translations
-if(TRANSLATION_QM_FILES)
-    add_custom_target(translations ALL DEPENDS ${TRANSLATION_QM_FILES})
-endif()
+# Translation loader
+lxqt_plugin_translation_loader(QM_LOADER kblayout "lxqt-panel")
 
-# Install compiled .qm files
-if(TRANSLATION_QM_FILES)
-    install(FILES ${TRANSLATION_QM_FILES}
-        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/lxqt/translations/lxqt-panel/kblayout"
-    )
-endif()
+# Add loader and QM files to sources
+list(APPEND SOURCES ${QM_LOADER} ${QM_FILES})
 
