@@ -1,7 +1,7 @@
 # LXQt Panel: Keyboard Layout Switcher Plugin
 
 Легковесный плагин для панели LXQt с переключением раскладки клавиатуры.
-Поддерживает X11 и Wayland (KWin, Sway, Hyprland, Labwc, Wayfire).
+Поддерживает X11 и Wayland (KWin).
 
 ## Возможности
 
@@ -21,11 +21,7 @@
 |-----------------|---------------------------------------------------|-----------------------------------|--------------|
 | X11 (Openbox)   | libxkbcommon-x11 + XCB                            | xcb_xkb_latch_lock_state          | Полная       |
 | KWin Wayland    | D-Bus `org.kde.KeyboardLayouts`                   | `qdbus6` (async)                  | Полная       |
-| Sway            | `swaymsg -t get_inputs` + config                  | `wtype Alt+Shift` (циклическое)   | Частичная    |
-| Hyprland        | `hyprctl -j devices`                              | `hyprctl keyword xkb_layout N`    | Полная       |
-| Labwc           | `~/.config/labwc/environment` → config → `setxkbmap` | `wtype`/`xdotool` (эмуляция)  | Частичная    |
-| Wayfire         | `~/.config/wayfire.ini` → `setxkbmap`             | `wtype`/`xdotool` (эмуляция)      | Частичная    |
-| Generic         | `setxkbmap -query` → `XKB_DEFAULT_LAYOUT` env     | `wtype`/`xdotool` (эмуляция)      | Эмуляция     |
+
 
 ## Зависимости
 
@@ -92,8 +88,6 @@ sudo cp lxqt-panel/libkblayout.so /usr/lib/lxqt-panel/
 ### Системные хоткеи
 > **Важно:** `lxqt-globalkeys` не работает на Wayland. Настройте хоткеи через композитор:
 > - **KWin:** System Settings → Keyboard → Shortcuts → Layout Switch
-> - **Sway:** `keybinding $mod+Shift+space` в `~/.config/sway/config`
-> - **Hyprland:** `bind = $mainMod, space, exec, hyprctl dispatch layoutmsg cyclegroup -1`
 
 ## Известные ограничения
 
@@ -119,7 +113,7 @@ plugin-kblayout/
 │   ├── kblayout.h/cpp          # Главный плагин
 │   ├── kblayoutbackend.h/cpp   # Абстрактный бэкенд
 │   ├── x11backend.h/cpp        # X11: libxkbcommon-x11 + XCB
-│   ├── waylandbackend.h/cpp    # Wayland: KWin/Sway/Hyprland/Labwc/Wayfire
+│   ├── waylandbackend.h/cpp    # Wayland: KWin
 │   ├── kbdkeeper.h/cpp         # Keeper: Global/Window/Application
 │   ├── kblayoutwidget.h/cpp    # Виджет на панели
 │   ├── kblayoutsettings.h/cpp  # Хранение настроек
